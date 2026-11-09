@@ -18,9 +18,13 @@ Configure and build (arm64, SCUMM only; run from an empty build directory):
 mkdir ~/build-arm64 && cd ~/build-arm64
 CXXFLAGS="-I$HOME/libs-arm64/include" LDFLAGS="-L$HOME/libs-arm64/lib/arm64-v8a" \
   /path/to/scummvm-duo/configure --host=android-arm64-v8a \
-  --disable-all-engines --enable-engine=scumm --disable-detection-full
+  --disable-all-engines --enable-engine=scumm,scumm-7-8 --disable-detection-full
 make -j"$(nproc)" androidtest
 ```
+
+`scumm-7-8` adds the SCUMM v7 and v8 games (Full Throttle, The Dig, The Curse of Monkey Island);
+without it ScummVM says "SCUMM v7-8 support is not compiled in" for them. Humongous Entertainment
+games need `he` as well. These games use the normal full-screen layout.
 
 `androidtest` builds `ScummVM-debug.apk` and also installs it on a connected device through
 Gradle. Use `make androidrelease` for an unsigned release APK.
