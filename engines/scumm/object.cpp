@@ -1828,7 +1828,8 @@ bool ScummEngine_v6::setupComiChest() {
 
 	// Only when playing: Guybrush is in the room, not in the menu
 	const int ego = VAR(VAR_EGO);
-	const bool inGame = ego > 0 && ego < _numActors && _actors[ego] && _actors[ego]->isInCurrentRoom();
+	const bool inGame = ego > 0 && ego < _numActors && _actors[ego] && _actors[ego]->isInCurrentRoom() &&
+	                    vm.cutSceneStackPointer == 0;
 
 	const bool ownChest = _chestStart >= 0;
 	const bool playable = inGame && _userPut > 0 && _currentRoom != 0 &&
