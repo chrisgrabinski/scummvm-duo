@@ -742,7 +742,7 @@ void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, int what) {
 			bool onItem = false;
 			for (uint i = 0; i < _chestBlasts.size(); i++)
 				onItem = onItem || (_chestBlasts[i].number != 114 && _chestBlasts[i].rect.contains(p));
-			if (!onItem && _scummVars[kModeVar] == 1) {
+			if (!onItem && (_scummVars[kModeVar] == 1 || _scummVars[kModeVar] == 3)) {
 				_lowerDown = false;
 				return;
 			}
