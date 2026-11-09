@@ -884,6 +884,21 @@ void ScummEngine::updateSplitScreenElements() {
 		e.group = 5;
 		e.src = Common::Rect(144, top, inventoryRight, bottom);
 		elements.push_back(e);
+
+		if (_game.id == GID_MONKEY2) {
+			// The inventory is a grid of slots, 40 by 24 pixels, at the right of two scroll arrow cells
+			// (always reported, as the arrows come and go); the box is stretched to the full width
+			e.group = 7;
+			for (int row = 0; row < 2; row++) {
+				const int y = vs.topline + 8 + row * 24;
+				e.src = Common::Rect(144, y, 160, y + 24);
+				elements.push_back(e);
+				for (int col = 0; col < 4; col++) {
+					e.src = Common::Rect(160 + col * 40, y, 200 + col * 40, y + 24);
+					elements.push_back(e);
+				}
+			}
+		}
 	}
 
 	if (_game.version > 2 && !dialog) {

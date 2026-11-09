@@ -399,10 +399,12 @@ private:
 	void computeRegions(const Common::Rect &area) {
 		Common::Rect sentence, boxes[2];
 		bool hasSentence = false, hasBox[2] = { false, false };
-		Common::Array<Common::Rect> texts;
+		Common::Array<Common::Rect> texts, slots;
 		for (uint i = 0; i < _elements.size(); i++) {
 			const uint8 g = _elements[i].group;
-			if (g == 0)
+			if (g == 7)
+				slots.push_back(_elements[i].src); // Inventory slots, inside the group 5 box
+			else if (g == 0)
 				unite(sentence, hasSentence, _elements[i].src);
 			else if (g == 4 || g == 5)
 				unite(boxes[g - 4], hasBox[g - 4], _elements[i].src);
@@ -437,7 +439,7 @@ private:
 				continue;
 			const float h = boxes[b].height() * scale;
 			y -= h;
-			if (b == 0 && addStretchedBox(boxes[0], texts, area, scale, y)) {
+			if (addStretchedBox(boxes[b], b == 0 ? texts : slots, area, scale, y)) {
 				// Done
 			} else {
 				const int dw = (int)(boxes[b].width() * scale);
