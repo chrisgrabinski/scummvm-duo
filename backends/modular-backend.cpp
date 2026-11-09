@@ -56,6 +56,10 @@ void ModularGraphicsBackend::setScreenSnapshotMode(ScreenSnapshotMode mode) {
 	_graphicsManager->setScreenSnapshotMode(mode);
 }
 
+void ModularGraphicsBackend::setLowerScreenImage(const Graphics::Surface *image) {
+	_graphicsManager->setLowerScreenImage(image);
+}
+
 bool ModularGraphicsBackend::getFeatureState(Feature f) {
 	return _graphicsManager->getFeatureState(f);
 }

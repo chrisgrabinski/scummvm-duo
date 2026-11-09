@@ -296,6 +296,10 @@ protected:
 	void setCursorHotspot(int x, int y) override;
 
 	virtual void setCursorFromImg(uint img, uint room, uint imgindex);
+
+	void updateLowerPanel() override;
+	void handleLowerScreenTouch(Common::Point p) override;
+	void renderLowerPanel();
 	void useIm01Cursor(const byte *im, int w, int h);
 	void useBompCursor(const byte *im, int w, int h);
 	void grabCursor(int x, int y, int w, int h);

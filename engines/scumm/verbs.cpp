@@ -563,11 +563,174 @@ void ScummEngine::updateScreenSnapshot() {
 	for (int i = 1; i < _numLocalObjects && !open; i++)
 		open = _objs[i].obj_nr == kBoxObject && _objs[i].state != 0;
 
-	const OSystem::ScreenSnapshotMode mode = open ? OSystem::kSnapshotFrozenTop : OSystem::kSnapshotRolling;
+	const OSystem::ScreenSnapshotMode mode = open ? OSystem::kSnapshotFrozenTop : OSystem::kSnapshotLowerScreen;
 	if (mode != _screenSnapshotMode) {
 		_screenSnapshotMode = mode;
 		g_system->setScreenSnapshotMode(mode);
+		_lowerPanelSignature.clear();
 	}
+	if (mode == OSystem::kSnapshotLowerScreen)
+		updateLowerPanel();
+}
+
+// Sam & Max: the inventory box is a menu made of room objects (global scripts 59, 60 and 62).
+// The lower screen shows the same box, drawn here offscreen, and a tap on it does what script 60
+// would do with the box open, without ever opening it.
+void ScummEngine_v6::updateLowerPanel() {
+	const int kInventoryArray = 178;
+	if (!_scummVars[kInventoryArray])
+		return;
+	const ArrayHeader *ah = getArray(kInventoryArray);
+	if (!ah || FROM_LE_16(ah->dim1) * FROM_LE_16(ah->dim2) <= 80)
+		return;
+
+	Common::String sig = Common::String::format("%d|%d|", _currentRoom, _scummVars[181]);
+	for (int i = 1; i <= 80; i++)
+		sig += Common::String::format("%d,", readArray(kInventoryArray, 0, i));
+	if (sig == _lowerPanelSignature)
+		return;
+	if (!_currentRoom || !getResourceAddress(rtBuffer, 9))
+		return;
+
+	_lowerPanelSignature = sig;
+	renderLowerPanel();
+}
+
+void ScummEngine_v6::renderLowerPanel() {
+	struct Icon {
+		int obj, room, x, y;
+	};
+	Common::Array<Icon> icons;
+
+	const int kInventoryArray = 178;
+	const int kBoxObject = 995;
+	icons.push_back({kBoxObject, 94, 0, 0});
+
+	// The five verbs, then the inventory, in a grid of 40x24 pixel cells
+	for (int i = 1; i <= 80; i++) {
+		const int obj = readArray(kInventoryArray, 0, i);
+		const int x = 5 + 5 * ((i - 1) % 6), y = 3 + 3 * ((i - 1) / 6);
+		if (!obj || y > 18)
+			continue;
+		if (i <= 5) {
+			icons.push_back({obj, 93, x, y});
+		} else if (obj != _scummVars[181]) {
+			// The object's own script tells which icon to show
+			int args[25] = {0};
+			runObjectScript(obj, 91, false, true, args);
+			if (_scummVars[182])
+				icons.push_back({_scummVars[182], 94, x, y});
+		}
+	}
+
+	VirtScreen &vs = _virtscr[kMainVirtScreen];
+	const int w = vs.w, h = vs.h;
+
+	// Draw with the regular object code, into a buffer in place of the main screen
+	byte *maskBuf = getResourceAddress(rtBuffer, 9);
+	const int maskSize = maskBuf ? getResourceSize(rtBuffer, 9) : 0;
+	Common::Array<byte> savedMask(maskBuf, maskSize);
+	uint16 savedTop[ARRAYSIZE(vs.tdirty)], savedBottom[ARRAYSIZE(vs.bdirty)];
+	memcpy(savedTop, vs.tdirty, sizeof(savedTop));
+	memcpy(savedBottom, vs.bdirty, sizeof(savedBottom));
+	uint32 savedUsage[ARRAYSIZE(gfxUsageBits)];
+	memcpy(savedUsage, gfxUsageBits, sizeof(savedUsage));
+	void *savedPixels = vs.getPixels(0, 0);
+	byte *savedBack = vs.backBuf;
+	const bool savedTwo = vs.hasTwoBuffers;
+	const bool savedSkip = _skipDrawObject;
+
+	Common::Array<byte> buffer(vs.pitch * h);
+	memset(buffer.data(), 0, buffer.size());
+	vs.setPixels(buffer.data());
+	vs.backBuf = nullptr;
+	vs.hasTwoBuffers = false;
+	_skipDrawObject = false;
+
+	for (uint i = 0; i < icons.size(); i++) {
+		loadFlObject(icons[i].obj, icons[i].room);
+		const int idx = getObjectIndex(icons[i].obj);
+		if (idx < 0)
+			continue;
+		ObjectData &od = _objs[idx];
+		const int savedState = getState(icons[i].obj);
+		od.x_pos = _screenStartStrip * 8 + icons[i].x * 8;
+		od.y_pos = icons[i].y * 8;
+		// Without the "ignore boxes" class, the object does not also write into the masks
+		const bool savedClass = getClass(icons[i].obj, kObjectClassIgnoreBoxes);
+		putClass(icons[i].obj, kObjectClassIgnoreBoxes, false);
+		putState(icons[i].obj, 1);
+		drawObject(idx, 0);
+		putState(icons[i].obj, savedState);
+		putClass(icons[i].obj, kObjectClassIgnoreBoxes, savedClass);
+	}
+
+	_skipDrawObject = savedSkip;
+	vs.setPixels(savedPixels);
+	vs.backBuf = savedBack;
+	vs.hasTwoBuffers = savedTwo;
+	memcpy(gfxUsageBits, savedUsage, sizeof(savedUsage));
+	memcpy(vs.tdirty, savedTop, sizeof(savedTop));
+	memcpy(vs.bdirty, savedBottom, sizeof(savedBottom));
+	if (maskSize)
+		memcpy(maskBuf, savedMask.data(), maskSize);
+
+	// To the format of the backend's overlay, with the current palette
+	const Graphics::PixelFormat format = g_system->getOverlayFormat();
+	Graphics::Surface image;
+	image.create(w, h, format);
+	for (int y = 0; y < h; y++) {
+		const byte *src = &buffer[y * vs.pitch];
+		uint32 *dst = (uint32 *)image.getBasePtr(0, y);
+		for (int x = 0; x < w; x++)
+			dst[x] = format.ARGBToColor(255, _currentPalette[src[x] * 3], _currentPalette[src[x] * 3 + 1], _currentPalette[src[x] * 3 + 2]);
+	}
+	g_system->setLowerScreenImage(&image);
+	image.free();
+}
+
+void ScummEngine_v6::handleLowerScreenTouch(Common::Point p) {
+	const int kInventoryArray = 178;
+	if (!_scummVars[kInventoryArray])
+		return;
+
+	// The cell of the tap, as in script 60
+	const int col = p.x / 40, row = p.y / 24;
+	if (row < 1 || col < 1 || col > 6)
+		return;
+	const int idx = (row - 1) * 6 + col;
+	if (idx < 1 || idx > 5)
+		return;
+
+	int cursor;
+	switch (readArray(kInventoryArray, 0, idx)) {
+	case 879:
+		cursor = 875;
+		break;
+	case 880:
+		cursor = 876;
+		break;
+	case 881:
+		cursor = 877;
+		break;
+	case 882:
+		cursor = 878;
+		break;
+	default:
+		return;
+	}
+
+	// Put back the object being held
+	if (_scummVars[181]) {
+		int args[25] = {0};
+		args[0] = _scummVars[181];
+		runScript(52, false, false, args);
+		_scummVars[181] = 0;
+		_scummVars[180] = 0;
+	}
+
+	_scummVars[177] = cursor;
+	setCursorFromImg(cursor, 93, 1);
 }
 
 void ScummEngine::updateSplitScreenElements() {

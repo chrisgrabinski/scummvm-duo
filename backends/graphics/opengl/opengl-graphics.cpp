@@ -103,6 +103,7 @@ OpenGLGraphicsManager::~OpenGLGraphicsManager() {
 	delete _gameScreen;
 	delete _snapshot;
 	delete _snapshotDiff;
+	delete _lowerScreen;
 #if defined(USE_OPENGL_GAME) || defined(USE_OPENGL_SHADERS)
 	delete _renderer3d;
 #endif
@@ -157,7 +158,7 @@ bool OpenGLGraphicsManager::hasFeature(OSystem::Feature f) const {
 }
 
 void OpenGLGraphicsManager::setScreenSnapshotMode(OSystem::ScreenSnapshotMode mode) {
-	_snapshotRolling = mode == OSystem::kSnapshotRolling;
+	_snapshotRolling = mode == OSystem::kSnapshotRolling || mode == OSystem::kSnapshotLowerScreen;
 	if (mode == OSystem::kSnapshotOff) {
 		delete _snapshot;
 		_snapshot = nullptr;
@@ -166,13 +167,36 @@ void OpenGLGraphicsManager::setScreenSnapshotMode(OSystem::ScreenSnapshotMode mo
 		delete _snapshotDiff;
 		_snapshotDiff = nullptr;
 	}
+	if (mode != OSystem::kSnapshotLowerScreen) {
+		delete _lowerScreen;
+		_lowerScreen = nullptr;
+	}
 
-	const bool stacked = mode == OSystem::kSnapshotFrozenTop && _snapshot;
-	if (stacked != _stackedScreens) {
+	const bool lowerPanel = mode == OSystem::kSnapshotLowerScreen;
+	const bool stacked = lowerPanel || (mode == OSystem::kSnapshotFrozenTop && _snapshot);
+	if (stacked != _stackedScreens || lowerPanel != _stackedLowerPanel) {
 		_stackedScreens = stacked;
+		_stackedLowerPanel = lowerPanel;
 		recalculateDisplayAreas();
 		recalculateCursorScaling();
 	}
+}
+
+void OpenGLGraphicsManager::setLowerScreenImage(const Graphics::Surface *image) {
+	if (!image) {
+		delete _lowerScreen;
+		_lowerScreen = nullptr;
+		return;
+	}
+
+	if (!_lowerScreen || _lowerScreen->getWidth() != image->w || _lowerScreen->getHeight() != image->h) {
+		delete _lowerScreen;
+		_lowerScreen = createSurface(_defaultFormatAlpha);
+		_lowerScreen->allocate(image->w, image->h);
+	}
+
+	_lowerScreen->copyRectToTexture(0, 0, image->w, image->h, image->getPixels(), image->pitch);
+	_forceRedraw = true;
 }
 
 void OpenGLGraphicsManager::updateSnapshot() {
@@ -850,9 +874,12 @@ void OpenGLGraphicsManager::updateScreen() {
 	}
 
 	// Like the game screen, before the pipeline is activated, as it may use others
-	if (_snapshot && isStackedInGame()) {
+	if (_snapshot && isStackedInGame() && !_stackedLowerPanel) {
 		_snapshot->updateGLTexture();
 		updateSnapshotDiff();
+	}
+	if (_lowerScreen && isStackedInGame() && _stackedLowerPanel) {
+		_lowerScreen->updateGLTexture();
 	}
 
 	if (_cursorVisible && _cursor) {
@@ -893,7 +920,11 @@ void OpenGLGraphicsManager::updateScreen() {
 	_targetBuffer->enableBlend(Framebuffer::kBlendModeOpaque);
 
 	// First step: Draw the (virtual) game screen.
-	if (_gameScreen && isStackedInGame() && _snapshot) {
+	if (_gameScreen && isStackedInGame() && _stackedLowerPanel) {
+		_pipeline->drawTexture(_gameScreen->getGLTexture(), _splitTopRect.left, _splitTopRect.top, _splitTopRect.width(), _splitTopRect.height());
+		if (_lowerScreen)
+			_pipeline->drawTexture(_lowerScreen->getGLTexture(), _splitBottomRect.left, _splitBottomRect.top, _splitBottomRect.width(), _splitBottomRect.height());
+	} else if (_gameScreen && isStackedInGame() && _snapshot) {
 		_pipeline->drawTexture(_snapshot->getGLTexture(), _splitTopRect.left, _splitTopRect.top, _splitTopRect.width(), _splitTopRect.height());
 		_pipeline->drawTexture((_snapshotDiff ? _snapshotDiff : _gameScreen)->getGLTexture(), _splitBottomRect.left, _splitBottomRect.top, _splitBottomRect.width(), _splitBottomRect.height());
 	} else if (_gameScreen && isSplitScreenInGame()) {
@@ -2045,8 +2076,8 @@ void OpenGLGraphicsManager::recalculateCursorScaling() {
 		int rotatedHeight = _gameDrawRect.height();
 		int cursorRefHeight = _gameScreen->getHeight();
 		if (isStackedInGame()) {
-			rotatedWidth = _splitBottomRect.width();
-			rotatedHeight = _splitBottomRect.height();
+			rotatedWidth = (_stackedLowerPanel ? _splitTopRect : _splitBottomRect).width();
+			rotatedHeight = (_stackedLowerPanel ? _splitTopRect : _splitBottomRect).height();
 		} else if (isSplitScreenInGame()) {
 			rotatedWidth = _splitTopRect.width();
 			rotatedHeight = _splitTopRect.height();

@@ -228,7 +228,7 @@ protected:
 	 */
 	Common::Point convertVirtualToWindow(const int x, const int y) const {
 		if (isStackedInGame()) {
-			const Common::Rect &r = _splitBottomRect;
+			const Common::Rect &r = _stackedLowerPanel ? _splitTopRect : _splitBottomRect;
 			return Common::Point(CLIP<int>(r.left + (x * r.width() + getWidth() / 2) / getWidth(), r.left, r.right - 1),
 			                     CLIP<int>(r.top + (y * r.height() + getHeight() / 2) / getHeight(), r.top, r.bottom - 1));
 		}
@@ -289,10 +289,10 @@ protected:
 	 */
 	Common::Point convertWindowToVirtual(int x, int y) const {
 		if (isStackedInGame()) {
-			// The upper screen is only to look at: taps there do not move the pointer
-			if (y < (_splitTopRect.bottom + _splitBottomRect.top) / 2)
+			// With a frozen upper screen, taps there do not move the pointer
+			if (!_stackedLowerPanel && y < (_splitTopRect.bottom + _splitBottomRect.top) / 2)
 				return _stackedLastPoint;
-			const Common::Rect &r = _splitBottomRect;
+			const Common::Rect &r = _stackedLowerPanel ? _splitTopRect : _splitBottomRect;
 			x = CLIP<int>(x, r.left, r.right - 1);
 			y = CLIP<int>(y, r.top, r.bottom - 1);
 			_stackedLastPoint = Common::Point(CLIP<int>((x - r.left) * getWidth() / r.width(), 0, getWidth() - 1),
@@ -585,6 +585,23 @@ protected:
 
 	bool isStackedInGame() const {
 		return _stackedScreens && !_overlayInGUI && _rotationMode == Common::kRotationNormal;
+	}
+
+	/**
+	 * Whether the lower screen shows an image of its own (OSystem::kSnapshotLowerScreen).
+	 */
+	bool _stackedLowerPanel = false;
+
+	bool isInLowerScreen(int y) const {
+		return isStackedInGame() && _stackedLowerPanel && y >= (_splitTopRect.bottom + _splitBottomRect.top) / 2;
+	}
+
+	Common::Point windowToLowerScreen(int x, int y) const {
+		const Common::Rect &r = _splitBottomRect;
+		x = CLIP<int>(x, r.left, r.right - 1);
+		y = CLIP<int>(y, r.top, r.bottom - 1);
+		return Common::Point(CLIP<int>((x - r.left) * getWidth() / r.width(), 0, getWidth() - 1),
+		                     CLIP<int>((y - r.top) * getHeight() / r.height(), 0, getHeight() - 1));
 	}
 
 	bool isSplitScreenInGame() const {

@@ -682,7 +682,8 @@ public:
 	enum ScreenSnapshotMode {
 		kSnapshotOff,       ///< Normal display
 		kSnapshotRolling,   ///< The backend keeps a copy of the latest frame
-		kSnapshotFrozenTop  ///< Show the game screen twice, stacked: the kept copy on top, the live one below
+		kSnapshotFrozenTop, ///< Show the game screen twice, stacked: the kept copy on top, the live one below
+		kSnapshotLowerScreen ///< The live game screen on top and the image set with setLowerScreenImage() below
 	};
 
 	/**
@@ -691,6 +692,13 @@ public:
 	 * kFeatureSplitScreen.
 	 */
 	virtual void setScreenSnapshotMode(ScreenSnapshotMode mode) {}
+
+	/**
+	 * Sets what the lower screen shows in kSnapshotLowerScreen mode. The image
+	 * must use the overlay format. Taps on that screen are sent as
+	 * EVENT_LOWER_SCREEN_TOUCH events and do not move the pointer.
+	 */
+	virtual void setLowerScreenImage(const Graphics::Surface *image) {}
 
 	/**
 	 * Determine whether the backend supports the specified feature.

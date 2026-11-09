@@ -126,6 +126,13 @@ enum EventType {
 	EVENT_HOTSPOTS_HIDE = 39,
 
 	/**
+	 * A tap on the lower screen of a stacked screen layout (see
+	 * OSystem::kSnapshotLowerScreen). The position is in the lower screen's
+	 * coordinates.
+	 */
+	EVENT_LOWER_SCREEN_TOUCH = 40,
+
+	/**
 	 * We reserve some event ids for custom events.
 	 * 
 	 * This is used for example by Asylum and Bagel engines.

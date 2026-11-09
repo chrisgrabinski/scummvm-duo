@@ -66,6 +66,7 @@ public:
 	bool hasFeature(OSystem::Feature f) const override;
 	void setFeatureState(OSystem::Feature f, bool enable) override;
 	void setScreenSnapshotMode(OSystem::ScreenSnapshotMode mode) override;
+	void setLowerScreenImage(const Graphics::Surface *image) override;
 	bool getFeatureState(OSystem::Feature f) const override;
 
 	const OSystem::GraphicsMode *getSupportedGraphicsModes() const override;
@@ -373,6 +374,11 @@ protected:
 	 * The game screen without what is also in the snapshot, shown below it.
 	 */
 	Surface *_snapshotDiff = nullptr;
+
+	/**
+	 * The image shown on the lower screen, see OSystem::setLowerScreenImage().
+	 */
+	Surface *_lowerScreen = nullptr;
 	void updateSnapshotDiff();
 
 #if defined(USE_OPENGL_GAME) || defined(USE_OPENGL_SHADERS)

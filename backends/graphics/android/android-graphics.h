@@ -49,6 +49,13 @@ public:
 	void displayMessageOnOSD(const Common::U32String &msg) override;
 
 	bool notifyMousePosition(Common::Point &mouse);
+
+	/**
+	 * Turns taps on the lower screen into EVENT_LOWER_SCREEN_TOUCH events.
+	 * @return 0 if the event is not for the lower screen, 1 if it was changed and
+	 *         is to be sent, 2 if it is to be dropped.
+	 */
+	int filterLowerScreenEvent(Common::Event &event);
 	Common::Point getMousePosition() { return Common::Point(_cursorX, _cursorY); }
 
 	float getHiDPIScreenFactor() const override;

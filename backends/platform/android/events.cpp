@@ -1539,8 +1539,13 @@ bool OSystem_Android::pollEvent(Common::Event &event) {
 	_event_queue_lock->unlock();
 
 	if (Common::isMouseEvent(event)) {
-		if (_graphicsManager)
-			return dynamic_cast<AndroidGraphicsManager *>(_graphicsManager)->notifyMousePosition(event.mouse);
+		if (_graphicsManager) {
+			AndroidGraphicsManager *gfx = dynamic_cast<AndroidGraphicsManager *>(_graphicsManager);
+			const int lower = gfx->filterLowerScreenEvent(event);
+			if (lower)
+				return lower == 1;
+			return gfx->notifyMousePosition(event.mouse);
+		}
 	}
 
 	return true;

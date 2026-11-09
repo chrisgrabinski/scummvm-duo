@@ -344,6 +344,18 @@ void AndroidGraphicsManager::touchControlNotifyChanged() {
 	_forceRedraw = true;
 }
 
+int AndroidGraphicsManager::filterLowerScreenEvent(Common::Event &event) {
+	if (!isInLowerScreen(event.mouse.y))
+		return 0;
+
+	if (event.type != Common::EVENT_LBUTTONDOWN)
+		return 2;
+
+	event.type = Common::EVENT_LOWER_SCREEN_TOUCH;
+	event.mouse = windowToLowerScreen(event.mouse.x, event.mouse.y);
+	return 1;
+}
+
 bool AndroidGraphicsManager::notifyMousePosition(Common::Point &mouse) {
 	mouse.x = CLIP<int16>(mouse.x, _activeArea.drawRect.left, _activeArea.drawRect.right);
 	mouse.y = CLIP<int16>(mouse.y, _activeArea.drawRect.top, _activeArea.drawRect.bottom);
