@@ -62,7 +62,10 @@ and its icons (the objects script 59 would draw) offscreen with the regular obje
 temporarily pointing the main virtual screen at a spare buffer, and gives the result to the
 backend with `setLowerScreenImage()`. Taps there arrive as `EVENT_LOWER_SCREEN_TOUCH` and make the
 engine run script 60, the box's click script, with the position of the tap; while it runs, scripts
-59 (draw the box) and 62 (close it) are not run, only the verb that closing would start.
+59 (draw the box) and 62 (close it) are not run, only the verb that closing would start. The game
+uses the cursors 875-878 for look, pick up, talk and use inside the box and 883-886 in the scene,
+so the engine converts between them around the call. The button that opens the box (object 76 in
+the first room) is not drawn and is untouchable.
 
 ## Adding a game
 

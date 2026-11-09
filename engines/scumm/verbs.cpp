@@ -569,8 +569,12 @@ void ScummEngine::updateScreenSnapshot() {
 		g_system->setScreenSnapshotMode(mode);
 		_lowerPanelSignature.clear();
 	}
-	if (mode == OSystem::kSnapshotLowerScreen)
+	if (mode == OSystem::kSnapshotLowerScreen) {
+		// The button that opens the box is not needed either
+		if (getObjectIndex(kSamnmaxBoxButton) != -1)
+			putClass(kSamnmaxBoxButton, kObjectClassUntouchable, true);
 		updateLowerPanel();
+	}
 }
 
 // Sam & Max: the inventory box is a menu made of room objects (global scripts 59, 60 and 62).
@@ -636,12 +640,13 @@ void ScummEngine_v6::renderLowerPanel() {
 	memcpy(savedBottom, vs.bdirty, sizeof(savedBottom));
 	uint32 savedUsage[ARRAYSIZE(gfxUsageBits)];
 	memcpy(savedUsage, gfxUsageBits, sizeof(savedUsage));
-	void *savedPixels = vs.getPixels(0, 0);
+	// The screen is a window sliding along one buffer: keep the pointer to its start
+	void *savedPixels = vs.Graphics::Surface::getPixels();
 	byte *savedBack = vs.backBuf;
 	const bool savedTwo = vs.hasTwoBuffers;
 	const bool savedSkip = _skipDrawObject;
 
-	Common::Array<byte> buffer(vs.pitch * h);
+	Common::Array<byte> buffer(vs.pitch * (h + 4));
 	memset(buffer.data(), 0, buffer.size());
 	vs.setPixels(buffer.data());
 	vs.backBuf = nullptr;
@@ -681,7 +686,7 @@ void ScummEngine_v6::renderLowerPanel() {
 	Graphics::Surface image;
 	image.create(w, h, format);
 	for (int y = 0; y < h; y++) {
-		const byte *src = &buffer[y * vs.pitch];
+		const byte *src = &buffer[y * vs.pitch + vs.xstart];
 		uint32 *dst = (uint32 *)image.getBasePtr(0, y);
 		for (int x = 0; x < w; x++)
 			dst[x] = format.ARGBToColor(255, _currentPalette[src[x] * 3], _currentPalette[src[x] * 3 + 1], _currentPalette[src[x] * 3 + 2]);
@@ -698,10 +703,23 @@ void ScummEngine_v6::handleLowerScreenTouch(Common::Point p) {
 	// the tap was in it
 	_scummVars[VAR_VIRT_MOUSE_X] = _scummVars[VAR_CAMERA_POS_X] - 160 + p.x;
 	_scummVars[VAR_VIRT_MOUSE_Y] = p.y;
+	// The verb cursors are 875-878 (look, pick up, talk, use) in the box and 883-886 in the
+	// scene, where 889 is walking: use the box's while its script runs, and the scene's after
+	int &cursor = _scummVars[177];
+	if (cursor >= 883 && cursor <= 886)
+		cursor -= 8;
+	else if (cursor == 889)
+		cursor = 875;
+
 	int args[25] = {2, 0, 1};
 	_lowerPanelRunning = true;
 	runScript(60, false, false, args);
 	_lowerPanelRunning = false;
+
+	if (cursor >= 875 && cursor <= 878) {
+		cursor += 8;
+		setCursorFromImg(cursor, 93, 1);
+	}
 }
 
 void ScummEngine::updateSplitScreenElements() {

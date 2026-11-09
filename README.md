@@ -29,7 +29,7 @@ Checked on a Pixel 9 Pro by looking at the result (Zak, Fate of Atlantis and Mon
 | The Secret of Monkey Island (VGA) | Same as Fate of Atlantis |
 | Other SCUMM v3-v5 games | Scene on top, the original bottom strip stretched below it |
 | Day of the Tentacle | Same as Monkey Island (VGA); the inventory edge is a guess from one screenshot |
-| Sam & Max Hit the Road | The live scene on the top screen and the cardboard-box inventory permanently on the bottom screen; tapping it runs the game's own box script. Verb icons checked on a phone; items not tested. Tapping the scene or Sam still opens the game's own box, which is then shown as before |
+| Sam & Max Hit the Road | The live scene on the top screen and the cardboard-box inventory permanently on the bottom screen; tapping it runs the game's own box script. Verb icons and the look verb on an item checked on a phone. The button that opens the game's box is hidden (in the first room at least), but tapping Sam still opens the game's own box, which is then shown as before |
 | SCUMM v7+ and HE games, Mac / FM Towns / NES versions | Unchanged (normal full-screen layout) |
 
 Everything else in ScummVM behaves as in upstream. Only the SCUMM engine is wired up.
