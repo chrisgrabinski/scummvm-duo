@@ -62,7 +62,8 @@ Release builds use the official application id; change `applicationId` in
 
 ## How it works
 
-See [docs/duo/DESIGN.md](docs/duo/DESIGN.md). In short, the SCUMM engine tells the backend where
+See [docs/duo/DESIGN.md](docs/duo/DESIGN.md). To keep the fork up to date with ScummVM, see
+[docs/duo/MAINTAINING.md](docs/duo/MAINTAINING.md). In short, the SCUMM engine tells the backend where
 its interface elements are on the 320x200 game screen, and the Android OpenGL backend redraws
 them in the bottom area and maps taps back to the original positions.
 
