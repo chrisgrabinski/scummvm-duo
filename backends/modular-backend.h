@@ -56,6 +56,7 @@ public:
 	bool hasFeature(Feature f) override;
 	void setFeatureState(Feature f, bool enable) override;
 	bool getFeatureState(Feature f) override;
+	void setSplitScreenElements(const Common::Array<SplitScreenElement> &elements) override;
 
 	//@}
 

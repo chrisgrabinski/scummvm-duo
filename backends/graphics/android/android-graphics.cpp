@@ -42,6 +42,7 @@
 #include "backends/graphics/opengl/pipelines/pipeline.h"
 #include "backends/graphics/opengl/texture.h"
 
+#include "common/config-manager.h"
 #include "graphics/blit.h"
 #include "graphics/managed_surface.h"
 
@@ -50,7 +51,8 @@
 //
 AndroidGraphicsManager::AndroidGraphicsManager() :
 	_touchcontrols(nullptr),
-	_old_touch_mode(OSystem_Android::TOUCH_MODE_TOUCHPAD) {
+	_old_touch_mode(OSystem_Android::TOUCH_MODE_TOUCHPAD),
+	_splitScreenOldTouchMode(OSystem_Android::TOUCH_MODE_TOUCHPAD) {
 	ENTER();
 
 	// Initialize our OpenGL ES context.
@@ -208,6 +210,58 @@ void AndroidGraphicsManager::hideOverlay() {
 	}
 
 	OpenGL::OpenGLGraphicsManager::hideOverlay();
+}
+
+bool AndroidGraphicsManager::hasFeature(OSystem::Feature f) const {
+	if (f == OSystem::kFeatureSplitScreen)
+		return true;
+	return OpenGL::OpenGLGraphicsManager::hasFeature(f);
+}
+
+void AndroidGraphicsManager::setFeatureState(OSystem::Feature f, bool enable) {
+	if (f != OSystem::kFeatureSplitScreen) {
+		OpenGL::OpenGLGraphicsManager::setFeatureState(f, enable);
+		return;
+	}
+
+	const int row = enable ? ConfMan.getInt("split_screen_row", Common::ConfigManager::kTransientDomain) : 0;
+	enable = enable && row > 0;
+	if (enable == _splitScreenActive && row == _splitScreenRow)
+		return;
+
+	// Tapping needs to hit the verbs directly, so use direct mouse mode
+	if (enable && !_splitScreenActive) {
+		_splitScreenOldTouchMode = JNI::getTouchMode();
+		JNI::setTouchMode(OSystem_Android::TOUCH_MODE_MOUSE);
+	} else if (!enable && _splitScreenActive) {
+		JNI::setTouchMode(_splitScreenOldTouchMode);
+	}
+
+	_splitScreenActive = enable;
+	_splitScreenRow = row;
+	if (!enable)
+		_splitScreenPanel = false;
+	recalculateDisplayAreas();
+}
+
+void AndroidGraphicsManager::setSplitScreenElements(const Common::Array<OSystem::SplitScreenElement> &elements) {
+	if (!_splitScreenActive)
+		return;
+
+	_splitLayout.setElements(elements);
+	if (!_splitScreenPanel) {
+		_splitScreenPanel = true;
+		recalculateDisplayAreas();
+	} else {
+		_splitLayout.compute(_splitBottomRect, getWidth());
+		_forceRedraw = true;
+	}
+}
+
+bool AndroidGraphicsManager::getFeatureState(OSystem::Feature f) const {
+	if (f == OSystem::kFeatureSplitScreen)
+		return _splitScreenActive;
+	return OpenGL::OpenGLGraphicsManager::getFeatureState(f);
 }
 
 float AndroidGraphicsManager::getHiDPIScreenFactor() const {

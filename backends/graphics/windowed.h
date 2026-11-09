@@ -23,6 +23,7 @@
 #define BACKENDS_GRAPHICS_WINDOWED_H
 
 #include "backends/graphics/graphics.h"
+#include "backends/graphics/split-screen-layout.h"
 #include "common/frac.h"
 #include "common/rect.h"
 #include "common/config-manager.h"
@@ -226,6 +227,19 @@ protected:
 	 * overlay-to-window).
 	 */
 	Common::Point convertVirtualToWindow(const int x, const int y) const {
+		if (isSplitScreenInGame() && _splitScreenPanel && y >= _splitScreenRow)
+			return _splitLayout.gameToWindow(x, y);
+
+		if (isSplitScreenInGame()) {
+			const bool top = y < _splitScreenRow;
+			const Common::Rect &r = top ? _splitTopRect : _splitBottomRect;
+			const int rowStart = top ? 0 : _splitScreenRow;
+			const int rows = top ? _splitScreenRow : getHeight() - _splitScreenRow;
+			const int wx = r.left + (x * r.width() + getWidth() / 2) / getWidth();
+			const int wy = r.top + ((y - rowStart) * r.height() + rows / 2) / rows;
+			return Common::Point(CLIP<int>(wx, r.left, r.right - 1), CLIP<int>(wy, r.top, r.bottom - 1));
+		}
+
 		const int targetX = _activeArea.drawRect.left;
 		const int targetY = _activeArea.drawRect.top;
 		const int targetWidth = _activeArea.drawRect.width();
@@ -268,6 +282,22 @@ protected:
 	 * window-to-overlay).
 	 */
 	Common::Point convertWindowToVirtual(int x, int y) const {
+		if (isSplitScreenInGame()) {
+			// Points in the gap between both areas go to the nearest one
+			const bool top = y < (_splitTopRect.bottom + _splitBottomRect.top) / 2;
+			if (!top && _splitScreenPanel)
+				return _splitLayout.windowToGame(x, y, getWidth(), getHeight());
+			const Common::Rect &r = top ? _splitTopRect : _splitBottomRect;
+			const int rowStart = top ? 0 : _splitScreenRow;
+			const int rows = top ? _splitScreenRow : getHeight() - _splitScreenRow;
+			x = CLIP<int>(x, r.left, r.right - 1);
+			y = CLIP<int>(y, r.top, r.bottom - 1);
+			const int vx = ((x - r.left) * getWidth()) / r.width();
+			const int vy = rowStart + ((y - r.top) * rows) / r.height();
+			return Common::Point(CLIP<int>(vx, 0, getWidth() - 1),
+			                     CLIP<int>(vy, rowStart, rowStart + rows - 1));
+		}
+
 		const int sourceX = _activeArea.drawRect.left;
 		const int sourceY = _activeArea.drawRect.top;
 		const int sourceMaxX = _activeArea.drawRect.right - 1;
@@ -381,6 +411,12 @@ protected:
 				getWidth() * getGameRenderScale(), getHeight() * getGameRenderScale(),
 				safeArea, _gameDrawRect);
 
+		if (isSplitScreenInGame()) {
+			populateSplitScreenRects(safeArea);
+			_gameDrawRect = _splitTopRect;
+			_gameDrawRect.extend(_splitBottomRect);
+		}
+
 		if (getOverlayHeight()) {
 			const int16 overlayWidth = getOverlayWidth(),
 			            overlayHeight = getOverlayHeight();
@@ -491,6 +527,69 @@ protected:
 	 * Whether the safe area should be ignored for games
 	 */
 	bool _ignoreGameSafeArea;
+
+	/**
+	 * Whether the game screen is shown as two stacked areas (see
+	 * OSystem::kFeatureSplitScreen), and the first game row of the bottom one.
+	 */
+	bool _splitScreenActive = false;
+	int _splitScreenRow = 0;
+
+	/**
+	 * Whether the lower area shows the interface elements the engine
+	 * reported, instead of the plain lower rows of the game screen.
+	 */
+	bool _splitScreenPanel = false;
+	SplitScreenLayout _splitLayout;
+
+	/**
+	 * Draw rectangles of the upper (rows before the split) and lower (rows
+	 * from the split) areas within the window.
+	 */
+	Common::Rect _splitTopRect;
+	Common::Rect _splitBottomRect;
+
+	bool isSplitScreenInGame() const {
+		return _splitScreenActive && !_overlayInGUI &&
+		       _splitScreenRow > 0 && _splitScreenRow < getHeight() &&
+		       _rotationMode == Common::kRotationNormal;
+	}
+
+	/**
+	 * The lower area is at most this many times taller than a uniform
+	 * scaling to the window width would make it.
+	 */
+	static const int kSplitScreenMaxStretchPercent = 150;
+
+	void populateSplitScreenRects(const Common::Rect &safeArea) {
+		const int gameW = getWidth(), gameH = getHeight();
+		const int bottomRows = gameH - _splitScreenRow;
+		const int areaW = safeArea.width(), areaH = safeArea.height();
+
+		int bottomH;
+		if (_splitScreenPanel) {
+			bottomH = areaH * (areaW > areaH ? 50 : 40) / 100;
+		} else {
+			bottomH = (int)((int64)bottomRows * areaW * kSplitScreenMaxStretchPercent / (gameW * 100));
+			bottomH = CLIP<int>(bottomH, 1, areaH / 2);
+		}
+		const int topH = areaH - bottomH;
+
+		// Scene: keep its aspect ratio and center it in the remaining space
+		int sceneW = areaW;
+		int sceneH = (int)((int64)areaW * _splitScreenRow / gameW);
+		if (sceneH > topH) {
+			sceneH = topH;
+			sceneW = (int)((int64)topH * gameW / _splitScreenRow);
+		}
+		const int sceneX = safeArea.left + (areaW - sceneW) / 2;
+		const int sceneY = safeArea.top + (topH - sceneH) / 2;
+		_splitTopRect = Common::Rect(sceneX, sceneY, sceneX + MAX(sceneW, 1), sceneY + MAX(sceneH, 1));
+
+		_splitBottomRect = Common::Rect(safeArea.left, safeArea.bottom - bottomH, safeArea.right, safeArea.bottom);
+		if (_splitScreenPanel)
+			_splitLayout.compute(_splitBottomRect, gameW);
+	}
 
 	/**
 	 * Whether the overlay (i.e. launcher, including the out-of-game launcher)

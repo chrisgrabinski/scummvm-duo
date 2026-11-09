@@ -41,6 +41,11 @@ public:
 
 	void updateScreen() override;
 
+	bool hasFeature(OSystem::Feature f) const override;
+	void setFeatureState(OSystem::Feature f, bool enable) override;
+	bool getFeatureState(OSystem::Feature f) const override;
+	void setSplitScreenElements(const Common::Array<OSystem::SplitScreenElement> &elements) override;
+
 	void displayMessageOnOSD(const Common::U32String &msg) override;
 
 	bool notifyMousePosition(Common::Point &mouse);
@@ -70,6 +75,7 @@ protected:
 private:
 	OpenGL::Surface *_touchcontrols;
 	int _old_touch_mode;
+	int _splitScreenOldTouchMode;
 	bool _rendering3d;
 };
 

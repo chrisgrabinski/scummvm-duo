@@ -817,7 +817,22 @@ void OpenGLGraphicsManager::updateScreen() {
 	_targetBuffer->enableBlend(Framebuffer::kBlendModeOpaque);
 
 	// First step: Draw the (virtual) game screen.
-	if (_gameScreen) {
+	if (_gameScreen && isSplitScreenInGame()) {
+		const Texture &tex = _gameScreen->getGLTexture();
+		const Common::Rect topClip(0, 0, _gameScreen->getWidth(), _splitScreenRow);
+		const Common::Rect bottomClip(0, _splitScreenRow, _gameScreen->getWidth(), _gameScreen->getHeight());
+		_pipeline->drawTexture(tex, _splitTopRect.left, _splitTopRect.top, _splitTopRect.width(), _splitTopRect.height(), topClip);
+		if (_splitScreenPanel) {
+			const Common::Array<SplitScreenLayout::Cell> &cells = _splitLayout.cells();
+			for (uint i = 0; i < cells.size(); i++) {
+				if (cells[i].draw.isEmpty())
+					continue;
+				_pipeline->drawTexture(tex, cells[i].draw.left, cells[i].draw.top, cells[i].draw.width(), cells[i].draw.height(), cells[i].src);
+			}
+		} else {
+			_pipeline->drawTexture(tex, _splitBottomRect.left, _splitBottomRect.top, _splitBottomRect.width(), _splitBottomRect.height(), bottomClip);
+		}
+	} else if (_gameScreen) {
 		_pipeline->drawTexture(_gameScreen->getGLTexture(), _gameDrawRect.left, _gameDrawRect.top, _gameDrawRect.width(), _gameDrawRect.height());
 	}
 #if defined(USE_OPENGL_GAME) || defined(USE_OPENGL_SHADERS)
@@ -1946,12 +1961,18 @@ void OpenGLGraphicsManager::recalculateCursorScaling() {
 	if (!(_cursorScaleX == 0 && _cursorScaleY == 0) && _gameScreen) {
 		int rotatedWidth = _gameDrawRect.width();
 		int rotatedHeight = _gameDrawRect.height();
+		int cursorRefHeight = _gameScreen->getHeight();
+		if (isSplitScreenInGame()) {
+			rotatedWidth = _splitTopRect.width();
+			rotatedHeight = _splitTopRect.height();
+			cursorRefHeight = _splitScreenRow;
+		}
 		if (_rotationMode == Common::kRotation90 || _rotationMode == Common::kRotation270) {
 			SWAP(rotatedWidth, rotatedHeight);
 		}
 
 		const float screenScaleFactorX = (float)rotatedWidth / _gameScreen->getWidth();
-		const float screenScaleFactorY = (float)rotatedHeight / _gameScreen->getHeight();
+		const float screenScaleFactorY = (float)rotatedHeight / cursorRefHeight;
 
 		const float cursorScaleFactorX = screenScaleFactorX * _cursorScaleX;
 		const float cursorScaleFactorY = screenScaleFactorY * _cursorScaleY;

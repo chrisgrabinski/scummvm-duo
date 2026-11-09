@@ -48,6 +48,10 @@ void ModularGraphicsBackend::setFeatureState(Feature f, bool enable) {
 	_graphicsManager->setFeatureState(f, enable);
 }
 
+void ModularGraphicsBackend::setSplitScreenElements(const Common::Array<SplitScreenElement> &elements) {
+	_graphicsManager->setSplitScreenElements(elements);
+}
+
 bool ModularGraphicsBackend::getFeatureState(Feature f) {
 	return _graphicsManager->getFeatureState(f);
 }

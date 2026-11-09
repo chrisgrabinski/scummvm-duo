@@ -25,6 +25,7 @@
 #include "common/scummsys.h"
 #include "common/noncopyable.h"
 #include "common/array.h" // For OSystem::getGlobalKeymaps()
+#include "common/rect.h" // For OSystem::SplitScreenElement
 #include "common/list.h" // For OSystem::getSupportedFormats()
 #include "common/ustr.h"
 #include "common/str-array.h" // For OSystem::updateStartSettings()
@@ -644,7 +645,39 @@ public:
 		* EventTests::staleMousePosition()).
 		*/
 		kFeatureStaleMousePositionWorkaround,
+
+		/**
+		* The backend can show the game screen in two stacked areas, split at
+		* the row stored in the transient config key "split_screen_row": the
+		* rows above it (scene) on top, the rows below it (interface) at the bottom.
+		*/
+		kFeatureSplitScreen,
 	};
+
+	/**
+	 * A piece of interface text (a sentence line, verb or inventory entry)
+	 * located at \c src in the game screen. \c group is 0 for the sentence
+	 * line, 1 for verbs, 2 for inventory items and 3 for inventory scroll arrows.
+	 */
+	struct SplitScreenElement {
+		Common::Rect src;
+		uint8 group;
+
+		bool operator==(const SplitScreenElement &other) const {
+			return group == other.group && src == other.src;
+		}
+
+		bool operator!=(const SplitScreenElement &other) const {
+			return !(*this == other);
+		}
+	};
+
+	/**
+	 * With kFeatureSplitScreen enabled, tells the backend where the interface
+	 * elements are, so it can lay them out in the bottom area as it sees fit.
+	 * Taps on a laid out element are reported at its position in the game screen.
+	 */
+	virtual void setSplitScreenElements(const Common::Array<SplitScreenElement> &elements) {}
 
 	/**
 	 * Determine whether the backend supports the specified feature.
