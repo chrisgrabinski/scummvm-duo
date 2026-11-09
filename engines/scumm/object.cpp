@@ -660,10 +660,6 @@ void ScummEngine::drawObject(int obj, int scrollType) {
 	if (od.obj_nr == 0)
 		return;
 
-	// Sam & Max: the box is always on the lower screen, so its button on the scene is not drawn
-	if (_game.id == GID_SAMNMAX && od.obj_nr == kSamnmaxBoxButton && _screenSnapshotMode == OSystem::kSnapshotLowerScreen)
-		return;
-
 	assertRange(0, od.obj_nr, _numGlobalObjects - 1, "object");
 
 	const int xpos = od.x_pos / 8;

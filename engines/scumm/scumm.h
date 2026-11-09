@@ -1436,7 +1436,6 @@ protected:
 	void updateSplitScreenElements();
 	void updateScreenSnapshot();
 	Common::String _lowerPanelSignature;
-	enum { kSamnmaxBoxButton = 76 };
 	bool _lowerPanelRunning = false;
 	virtual void updateLowerPanel() {}
 	virtual void handleLowerScreenTouch(Common::Point p) {}

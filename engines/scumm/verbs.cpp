@@ -570,9 +570,10 @@ void ScummEngine::updateScreenSnapshot() {
 		_lowerPanelSignature.clear();
 	}
 	if (mode == OSystem::kSnapshotLowerScreen) {
-		// The button that opens the box is not needed either
-		if (getObjectIndex(kSamnmaxBoxButton) != -1)
-			putClass(kSamnmaxBoxButton, kObjectClassUntouchable, true);
+		// The button that opens the box is the actor 1 sitting in the corner: keep it out of the room
+		Actor *button = _actors[1];
+		if (button && button->isInCurrentRoom())
+			button->putActor(0, 0, 0);
 		updateLowerPanel();
 	}
 }

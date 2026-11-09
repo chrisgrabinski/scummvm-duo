@@ -64,8 +64,9 @@ backend with `setLowerScreenImage()`. Taps there arrive as `EVENT_LOWER_SCREEN_T
 engine run script 60, the box's click script, with the position of the tap; while it runs, scripts
 59 (draw the box) and 62 (close it) are not run, only the verb that closing would start. The game
 uses the cursors 875-878 for look, pick up, talk and use inside the box and 883-886 in the scene,
-so the engine converts between them around the call. The button that opens the box (object 76 in
-the first room) is not drawn and is untouchable.
+so the engine converts between them around the call. The button that opens the box is actor 1, which
+the game keeps in the bottom left corner of the scene (clicking it opens the box); it is kept out
+of the room.
 
 ## Adding a game
 
