@@ -718,7 +718,11 @@ void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, int what) {
 
 	if (what == 4) {
 		// The pointer moved over the lower screen: the chest reacts to hovering, with a different cursor
-		if (_game.id == GID_CMI && _chestOnLower && !_lowerDown && _scummVars[312] == 1) {
+		const bool hovering = _scummVars[312] == 3 && _chestTapFrames > 0;
+		if (_game.id == GID_CMI && _chestOnLower && !_lowerDown && (_scummVars[312] == 1 || hovering)) {
+			// The game looks at the chest, not at the scene, only in its inventory mode: it is in it for a moment
+			_scummVars[312] = 3;
+			_chestTapFrames = 6;
 			Common::Event event;
 			event.type = Common::EVENT_MOUSEMOVE;
 			event.mouse = p;
