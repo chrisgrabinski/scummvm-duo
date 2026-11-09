@@ -515,6 +515,128 @@ void ScummEngine_v2::redrawV2Inventory() {
 	}
 }
 
+void ScummEngine_v2::addSplitScreenInventory(Common::Array<OSystem::SplitScreenElement> &elements) {
+	if (!(_userState & USERSTATE_IFACE_INVENTORY))
+		return;
+
+	const int top = _virtscr[kVerbVirtScreen].topline;
+	const int invCount = getInventoryCount(_scummVars[VAR_EGO]);
+	OSystem::SplitScreenElement e;
+
+	for (int i = 0; i < 4 && i < invCount - _inventoryOffset; i++) {
+		const int obj = findInventory(_scummVars[VAR_EGO], i + 1 + _inventoryOffset);
+		if (obj == 0)
+			break;
+		const byte *name = getObjOrActorName(obj);
+		if (!name)
+			continue;
+		const int chars = MIN<int>(strlen((const char *)name), 18);
+		if (chars == 0)
+			continue;
+		e.group = 2;
+		e.src = Common::Rect(_mouseOverBoxesV2[i].rect.left, _mouseOverBoxesV2[i].rect.top + top,
+		                     _mouseOverBoxesV2[i].rect.left + chars * 8, _mouseOverBoxesV2[i].rect.bottom + top);
+		elements.push_back(e);
+	}
+
+	e.group = 3;
+	if (_inventoryOffset > 0) {
+		e.src = _mouseOverBoxesV2[kInventoryUpArrow].rect;
+		e.src.translate(0, top);
+		elements.push_back(e);
+	}
+	if (_inventoryOffset + 4 < invCount) {
+		e.src = _mouseOverBoxesV2[kInventoryDownArrow].rect;
+		e.src.translate(0, top);
+		elements.push_back(e);
+	}
+}
+
+void ScummEngine::updateSplitScreenElements() {
+	if (!g_system->getFeatureState(OSystem::kFeatureSplitScreen))
+		return;
+	if (_game.version == 0 || (_game.version > 2 && _game.id != GID_INDY4 && _game.id != GID_MONKEY))
+		return;
+	const bool monkey = _game.id == GID_MONKEY;
+
+	const VirtScreen &vs = _virtscr[kVerbVirtScreen];
+	Common::Array<OSystem::SplitScreenElement> elements;
+	OSystem::SplitScreenElement e;
+	Common::Rect verbTexts;
+
+	if (_game.version <= 2) {
+		e.group = 0;
+		e.src = Common::Rect(0, vs.topline, _screenWidth, vs.topline + 8);
+		elements.push_back(e);
+	}
+
+	if (_game.version > 2 || (_userState & USERSTATE_IFACE_VERBS)) {
+		for (int i = 1; i < _numVerbs; i++) {
+			const VerbSlot &v = _verbs[i];
+			if (!v.verbid || v.saveid || !v.curmode)
+				continue;
+			if (v.curRect.right <= v.curRect.left || v.curRect.bottom <= v.curRect.top || v.curRect.top < vs.topline)
+				continue;
+
+			e.src = v.curRect;
+			if (_game.version <= 2) {
+				e.group = 1;
+			} else if (v.type != kImageVerbType && v.curRect.top < vs.topline + 8) {
+				_splitSentenceRect = v.curRect;
+				continue;
+			} else if (monkey) {
+				// Verbs are in the left 144 columns and the inventory, which is shown whole, at their right
+				if (v.type == kImageVerbType || v.curRect.left >= 144)
+					continue;
+				// Centered verbs are not always inside curRect: use the rectangle they were drawn in
+				e.group = 6;
+				e.src = v.oldRect.isEmpty() ? v.curRect : v.oldRect;
+				e.src.left--;
+				e.src.right++;
+				if (verbTexts.isEmpty())
+					verbTexts = e.src;
+				else
+					verbTexts.extend(e.src);
+			} else {
+				// The verb box and the inventory box (at its right) are shown whole
+				if (v.curRect.left >= 128)
+					e.group = 5;
+				else
+					e.group = (v.type == kImageVerbType) ? 4 : 6; // 6: verb texts
+			}
+			elements.push_back(e);
+		}
+	}
+
+	if (monkey && !verbTexts.isEmpty()) {
+		const int top = MAX<int>(vs.topline + 8, verbTexts.top - 2);
+		const int bottom = MIN<int>(_screenHeight, verbTexts.bottom + 2);
+		e.group = 4;
+		e.src = Common::Rect(0, top, 144, bottom);
+		elements.push_back(e);
+		e.group = 5;
+		e.src = Common::Rect(144, top, _screenWidth, bottom);
+		elements.push_back(e);
+	}
+
+	if (_game.version > 2) {
+		if (_splitSentenceRect.isEmpty())
+			_splitSentenceRect = Common::Rect(0, vs.topline, _screenWidth, vs.topline + 8);
+		e.group = 0;
+		e.src = _splitSentenceRect;
+		elements.push_back(e);
+	}
+
+	if (_game.version <= 2)
+		addSplitScreenInventory(elements);
+
+	if (_splitScreenElementsSent && elements == _splitScreenElements)
+		return;
+	_splitScreenElements = elements;
+	_splitScreenElementsSent = true;
+	g_system->setSplitScreenElements(elements);
+}
+
 void ScummEngine::redrawVerbs() {
 	if (_game.version <= 2 && !(_userState & USERSTATE_IFACE_VERBS)) // Don't draw verbs unless active
 		return;

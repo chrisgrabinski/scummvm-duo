@@ -1432,6 +1432,13 @@ public:
 
 protected:
 	void initScreens(int b, int h);
+	void updateSplitScreen();
+	void updateSplitScreenElements();
+	virtual void addSplitScreenInventory(Common::Array<OSystem::SplitScreenElement> &elements) {}
+
+	Common::Array<OSystem::SplitScreenElement> _splitScreenElements;
+	bool _splitScreenElementsSent = false;
+	Common::Rect _splitSentenceRect;
 	void initVirtScreen(VirtScreenNumber slot, int top, int width, int height, bool twobufs, bool scrollable);
 	void initBGBuffers(int height);
 	void initCycl(const byte *ptr);	// Color cycle

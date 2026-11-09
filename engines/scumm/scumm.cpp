@@ -486,6 +486,8 @@ ScummEngine::ScummEngine(OSystem *syst, const DetectorResult &dr)
 
 
 ScummEngine::~ScummEngine() {
+	g_system->setFeatureState(OSystem::kFeatureSplitScreen, false);
+
 	delete _musicEngine;
 
 	// Delete the sound object earlier than the actors
@@ -3326,6 +3328,7 @@ load_game:
 			displayDialog();
 
 		scummLoop_handleDrawing();
+		updateSplitScreenElements();
 
 		scummLoop_handleActors();
 

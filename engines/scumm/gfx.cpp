@@ -19,6 +19,7 @@
  *
  */
 
+#include "common/config-manager.h"
 #include "common/system.h"
 #include "scumm/actor.h"
 #include "scumm/charset.h"
@@ -389,12 +390,28 @@ void ScummEngine::initScreens(int b, int h) {
 	_screenB = b;
 	_screenH = h;
 
+	updateSplitScreen();
+
 	_gdi->init();
 
 #ifndef DISABLE_TOWNS_DUAL_LAYER_MODE
 	// The right most visible strip for FM-Towns smooth scrolling
 	_scrollFeedStrips[0] = _gdi->_numStrips - 1;
 #endif
+}
+
+void ScummEngine::updateSplitScreen() {
+	const VirtScreen &verbs = _virtscr[kVerbVirtScreen];
+	bool split = _game.version <= 5 && !_macScreen && _game.platform != Common::kPlatformFMTowns &&
+	             _game.platform != Common::kPlatformNES && verbs.h > 0 &&
+	             g_system->hasFeature(OSystem::kFeatureSplitScreen) &&
+	             (!ConfMan.hasKey("dual_screen") || ConfMan.getBool("dual_screen"));
+
+	if (split)
+		ConfMan.setInt("split_screen_row", verbs.topline, Common::ConfigManager::kTransientDomain);
+	g_system->setFeatureState(OSystem::kFeatureSplitScreen, split);
+	if (!split)
+		_splitScreenElementsSent = false;
 }
 
 void ScummEngine::initVirtScreen(VirtScreenNumber slot, int top, int width, int height, bool twobufs,

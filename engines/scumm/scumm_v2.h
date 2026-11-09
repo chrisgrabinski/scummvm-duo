@@ -53,6 +53,9 @@ public:
 	void redrawV2Inventory();
 
 protected:
+	void addSplitScreenInventory(Common::Array<OSystem::SplitScreenElement> &elements) override;
+
+protected:
 	byte _hiLiteColorVerbArrow = 0x0E;
 	byte _hiLiteColorInvSentence = 0x0E;
 
