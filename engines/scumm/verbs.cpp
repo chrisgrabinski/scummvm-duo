@@ -821,8 +821,10 @@ void ScummEngine::updateSplitScreenElements() {
 	if (monkey) {
 		for (int i = 1; i < _numVerbs; i++) {
 			const VerbSlot &v = _verbs[i];
-			if (v.verbid && !v.saveid && v.curmode && v.type != kImageVerbType && v.curRect.top >= vs.topline + 8 &&
-			    v.curRect.right - v.curRect.left > 150)
+			if (!v.verbid || v.saveid || !v.curmode || v.type == kImageVerbType)
+				continue;
+			// Wide lines (Monkey Island 2), or lines at the left edge, where no verb is (Monkey Island)
+			if ((v.curRect.top >= vs.topline + 8 && v.curRect.right - v.curRect.left > 150) || v.curRect.left < 8)
 				dialog = true;
 		}
 	}
