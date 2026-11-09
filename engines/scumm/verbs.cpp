@@ -716,6 +716,15 @@ void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, bool rightClick) {
 	if (_game.id == GID_CMI) {
 		// The chest is the game's own: a tap there is a click at the same position
 		const int kModeVar = 312;
+
+		// Only the items and the arrows take a tap: the rest of the chest is not to click through
+		// to the scene, which is what the game would do with an item in hand
+		bool onItem = false;
+		for (uint i = 0; i < _chestBlasts.size(); i++)
+			onItem = onItem || (_chestBlasts[i].number != 114 && _chestBlasts[i].rect.contains(p));
+		if (!onItem && _scummVars[kModeVar] == 1)
+			return;
+
 		if (_scummVars[kModeVar] == 1) {
 			// The game takes it as a click in its inventory, for a moment
 			_scummVars[kModeVar] = 3;
