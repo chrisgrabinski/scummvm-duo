@@ -709,7 +709,10 @@ void ScummEngine_v6::renderLowerPanel() {
 	image.free();
 }
 
-void ScummEngine_v6::handleLowerScreenTouch(Common::Point p) {
+void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, bool rightClick) {
+	if (_game.id == GID_SAMNMAX && rightClick)
+		return;
+
 	if (_game.id == GID_CMI) {
 		// The chest is the game's own: a tap there is a click at the same position
 		const int kModeVar = 312;
@@ -718,14 +721,17 @@ void ScummEngine_v6::handleLowerScreenTouch(Common::Point p) {
 			_scummVars[kModeVar] = 3;
 			_chestTapFrames = 12;
 		}
+		if (rightClick)
+			_coinFromLower = true; // The verb coin opens there, and is shown there too
+
 		Common::EventManager *events = g_system->getEventManager();
 		Common::Event event;
 		event.mouse = p;
 		event.type = Common::EVENT_MOUSEMOVE;
 		events->pushEvent(event);
-		event.type = Common::EVENT_LBUTTONDOWN;
+		event.type = rightClick ? Common::EVENT_RBUTTONDOWN : Common::EVENT_LBUTTONDOWN;
 		events->pushEvent(event);
-		event.type = Common::EVENT_LBUTTONUP;
+		event.type = rightClick ? Common::EVENT_RBUTTONUP : Common::EVENT_LBUTTONUP;
 		events->pushEvent(event);
 		return;
 	}

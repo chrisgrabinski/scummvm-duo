@@ -348,9 +348,11 @@ int AndroidGraphicsManager::filterLowerScreenEvent(Common::Event &event) {
 	if (!isInLowerScreen(event.mouse.y))
 		return 0;
 
-	if (event.type != Common::EVENT_LBUTTONDOWN)
+	if (event.type != Common::EVENT_LBUTTONDOWN && event.type != Common::EVENT_RBUTTONDOWN)
 		return 2;
 
+	// customType tells the engine which button it was: 0 left, 1 right
+	event.customType = event.type == Common::EVENT_RBUTTONDOWN ? 1 : 0;
 	event.type = Common::EVENT_LOWER_SCREEN_TOUCH;
 	event.mouse = windowToLowerScreen(event.mouse.x, event.mouse.y);
 	return 1;
