@@ -27,6 +27,7 @@ Checked on a Pixel 9 Pro by looking at the result (Zak, Fate of Atlantis and Mon
 | Zak McKracken (v2); Maniac Mansion (v1/v2) uses the same code but was not looked at | Sentence line, verbs in at most 4 columns (extra verbs on a last row), inventory 2 per row with scroll arrows |
 | Indiana Jones and the Fate of Atlantis | Whole verb box, stretched to full width with equal columns, above the whole inventory box |
 | The Secret of Monkey Island (VGA) | Same as Fate of Atlantis |
+| Monkey Island 2: LeChuck's Revenge | Like Monkey Island (VGA), and the inventory slots are stretched to the full width. Conversation lines are shown as rows. Checked on a phone |
 | Other SCUMM v3-v5 games | Scene on top, the original bottom strip stretched below it |
 | Day of the Tentacle | Same as Monkey Island (VGA); the inventory edge is a guess from one screenshot |
 | Sam & Max Hit the Road | The live scene on the top screen and the cardboard-box inventory permanently on the bottom screen; tapping it runs the game's own box script. Verb icons and the look verb on an item checked on a phone. The button that opens the game's box is removed, so the game's own box no longer opens |
