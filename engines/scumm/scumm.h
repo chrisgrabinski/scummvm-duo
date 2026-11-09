@@ -1440,6 +1440,7 @@ protected:
 	int _lowerPanelRoom = -1;
 	int _lowerPanelWait = 0;
 	virtual void updateLowerPanel() {}
+	virtual bool ignoreTopRightClick() { return false; }
 	bool _lowerHover = false;   // The pointer is over the lower screen
 	int _lowerPushed = 0;       // Events pushed for the lower screen, not yet read back
 	virtual void finishLowerScreen() {}

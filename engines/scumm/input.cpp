@@ -228,10 +228,14 @@ void ScummEngine::parseEvent(Common::Event event) {
 	case Common::EVENT_LBUTTONDOWN:
 	case Common::EVENT_RBUTTONDOWN:
 	case Common::EVENT_MOUSEMOVE:
-		if (_lowerPushed > 0)
+		if (_lowerPushed > 0) {
 			_lowerPushed--;
-		else
+		} else {
 			_lowerHover = false; // The pointer is on the top screen again
+			// A right click there would open the game's own inventory, but it is always on the lower screen
+			if ((event.type == Common::EVENT_RBUTTONDOWN || event.type == Common::EVENT_RBUTTONUP) && ignoreTopRightClick())
+				break;
+		}
 		if (event.type == Common::EVENT_LBUTTONDOWN)
 			_leftBtnPressed |= msClicked|msDown;
 		else if (event.type == Common::EVENT_RBUTTONDOWN)
