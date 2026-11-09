@@ -36,8 +36,7 @@ whole (verb box, inventory box), 6 verb texts inside the verb box.
   - boxes: whole boxes of the frame, stacked. The verb box is redrawn in column slices so that its
     columns are equal and its texts keep their proportions.
 - `backends/graphics/opengl/opengl-graphics.cpp`: draws the cells from the game texture.
-- `backends/graphics/android/android-graphics.*`: enables the feature, switches to mouse touch
-  mode and forwards the elements.
+- `backends/graphics/android/android-graphics.*`: enables the feature and forwards the elements.
 
 ### SCUMM engine
 

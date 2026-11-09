@@ -51,8 +51,7 @@
 //
 AndroidGraphicsManager::AndroidGraphicsManager() :
 	_touchcontrols(nullptr),
-	_old_touch_mode(OSystem_Android::TOUCH_MODE_TOUCHPAD),
-	_splitScreenOldTouchMode(OSystem_Android::TOUCH_MODE_TOUCHPAD) {
+	_old_touch_mode(OSystem_Android::TOUCH_MODE_TOUCHPAD) {
 	ENTER();
 
 	// Initialize our OpenGL ES context.
@@ -228,14 +227,6 @@ void AndroidGraphicsManager::setFeatureState(OSystem::Feature f, bool enable) {
 	enable = enable && row > 0;
 	if (enable == _splitScreenActive && row == _splitScreenRow)
 		return;
-
-	// Tapping needs to hit the verbs directly, so use direct mouse mode
-	if (enable && !_splitScreenActive) {
-		_splitScreenOldTouchMode = JNI::getTouchMode();
-		JNI::setTouchMode(OSystem_Android::TOUCH_MODE_MOUSE);
-	} else if (!enable && _splitScreenActive) {
-		JNI::setTouchMode(_splitScreenOldTouchMode);
-	}
 
 	_splitScreenActive = enable;
 	_splitScreenRow = row;
