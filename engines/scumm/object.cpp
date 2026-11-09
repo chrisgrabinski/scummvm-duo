@@ -1988,8 +1988,8 @@ void ScummEngine_v6::finishLowerScreen() {
 	} else if ((int)_prevMain.size() == w * h) {
 		// The verb coin is drawn on the main screen: copy what changed there around it over the chest
 		const int cx = _scummVars[318] - (VAR(VAR_CAMERA_POS_X) - w / 2);
-		const int cy = _scummVars[319] - (VAR(VAR_CAMERA_POS_Y) - h / 2) - 50; // The coin is drawn above this point
-		const int kRadius = 66;
+		const int cy = _scummVars[319] - (VAR(VAR_CAMERA_POS_Y) - h / 2) - 44; // The coin is drawn above this point
+		const int kRadius = 76;
 		const Common::Rect area(MAX(cx - kRadius, 0), MAX(cy - kRadius, 0), MIN(cx + kRadius, w), MIN(cy + kRadius, h));
 		for (int y = area.top; y < area.bottom; y++) {
 			const byte *cur = (const byte *)vs.getPixels(0, y);
