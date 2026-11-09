@@ -303,6 +303,8 @@ protected:
 
 	// The Curse of Monkey Island: its inventory chest, made of blast objects, is shown on the lower screen
 	void drawBlastObjectsToLowerScreen(int first, bool coin);
+	Common::Array<byte> _prevMain;   // The main screen of the last frame without the verb coin
+	bool _chestFrozen = false;
 	bool setupComiChest();
 	Graphics::Surface *_blastDst = nullptr;
 	Common::Array<byte> _blastBuffer;

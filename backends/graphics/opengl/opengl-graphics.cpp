@@ -167,7 +167,7 @@ void OpenGLGraphicsManager::setScreenSnapshotMode(OSystem::ScreenSnapshotMode mo
 		delete _snapshotDiff;
 		_snapshotDiff = nullptr;
 	}
-	if (mode != OSystem::kSnapshotLowerScreen) {
+	if (mode != OSystem::kSnapshotLowerScreen && mode != OSystem::kSnapshotFrozenTop) {
 		delete _lowerScreen;
 		_lowerScreen = nullptr;
 	}
@@ -876,9 +876,10 @@ void OpenGLGraphicsManager::updateScreen() {
 	// Like the game screen, before the pipeline is activated, as it may use others
 	if (_snapshot && isStackedInGame() && !_stackedLowerPanel) {
 		_snapshot->updateGLTexture();
-		updateSnapshotDiff();
+		if (!_lowerScreen)
+			updateSnapshotDiff();
 	}
-	if (_lowerScreen && isStackedInGame() && _stackedLowerPanel) {
+	if (_lowerScreen && isStackedInGame()) {
 		_lowerScreen->updateGLTexture();
 	}
 
@@ -926,7 +927,7 @@ void OpenGLGraphicsManager::updateScreen() {
 			_pipeline->drawTexture(_lowerScreen->getGLTexture(), _splitBottomRect.left, _splitBottomRect.top, _splitBottomRect.width(), _splitBottomRect.height());
 	} else if (_gameScreen && isStackedInGame() && _snapshot) {
 		_pipeline->drawTexture(_snapshot->getGLTexture(), _splitTopRect.left, _splitTopRect.top, _splitTopRect.width(), _splitTopRect.height());
-		_pipeline->drawTexture((_snapshotDiff ? _snapshotDiff : _gameScreen)->getGLTexture(), _splitBottomRect.left, _splitBottomRect.top, _splitBottomRect.width(), _splitBottomRect.height());
+		_pipeline->drawTexture((_lowerScreen ? _lowerScreen : (_snapshotDiff ? _snapshotDiff : _gameScreen))->getGLTexture(), _splitBottomRect.left, _splitBottomRect.top, _splitBottomRect.width(), _splitBottomRect.height());
 	} else if (_gameScreen && isSplitScreenInGame()) {
 		const Texture &tex = _gameScreen->getGLTexture();
 		const Common::Rect topClip(0, 0, _gameScreen->getWidth(), _splitScreenRow);

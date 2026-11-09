@@ -721,8 +721,7 @@ void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, bool rightClick) {
 			_scummVars[kModeVar] = 3;
 			_chestTapFrames = 12;
 		}
-		if (rightClick)
-			_coinFromLower = true; // The verb coin opens there, and is shown there too
+		_coinFromLower = true; // The verb coin may open, and is then shown there too
 
 		Common::EventManager *events = g_system->getEventManager();
 		Common::Event event;

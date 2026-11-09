@@ -1793,9 +1793,8 @@ void ScummEngine_v6::drawBlastObjects() {
 	int count = _blastObjectQueuePos;
 	if (_game.id == GID_CMI && g_system->hasFeature(OSystem::kFeatureSplitScreen) && setupComiChest()) {
 		// The chest goes on the lower screen, the rest on the main one
-		const bool coin = _coinFromLower && _scummVars[312] == 2;
-		drawBlastObjectsToLowerScreen(_chestStart, coin);
-		count = coin ? 0 : _chestStart;
+		drawBlastObjectsToLowerScreen(_chestStart, _chestFrozen);
+		count = _chestStart;
 	}
 
 	eo = _blastObjectQueue;
@@ -1859,12 +1858,27 @@ bool ScummEngine_v6::setupComiChest() {
 		}
 	}
 
+	// The verb coin (modes 2 and 4) is drawn on the main screen: while it is open after a tap on the
+	// lower screen, the top screen stays as it was and the coin is shown on the lower one
+	const bool coinOpen = _coinFromLower && (_scummVars[kModeVar] == 2 || _scummVars[kModeVar] == 4);
+
 	// Keep the lower screen as it is while the game does not take input, for example in a dialog
 	const bool drawLower = _chestStart >= 0;
 	const bool layout = drawLower || (_chestOnLower && inGame);
-	if (layout != _chestOnLower) {
+	if (layout != _chestOnLower || (layout && coinOpen != _chestFrozen)) {
 		_chestOnLower = layout;
-		g_system->setScreenSnapshotMode(layout ? OSystem::kSnapshotLowerScreen : OSystem::kSnapshotOff);
+		_chestFrozen = layout && coinOpen;
+		g_system->setScreenSnapshotMode(!layout ? OSystem::kSnapshotOff :
+			(_chestFrozen ? OSystem::kSnapshotFrozenTop : OSystem::kSnapshotLowerScreen));
+	}
+
+	if (layout && !coinOpen) {
+		// Remember the main screen, to see the coin on it later
+		const VirtScreen &vs = _virtscr[kMainVirtScreen];
+		const int w = vs.w, h = vs.h;
+		_prevMain.resize(w * h);
+		for (int y = 0; y < h; y++)
+			memcpy(&_prevMain[y * w], vs.getPixels(0, y), w);
 	}
 	return drawLower;
 }
@@ -1958,14 +1972,22 @@ void ScummEngine_v6::drawBlastObjectsToLowerScreen(int first, bool coin) {
 		if (getObjectIndex(_blastObjectQueue[i].number) != -1)
 			drawBlastObject(&_blastObjectQueue[i]);
 	}
-	if (coin) {
-		// The verb coin over the chest
-		for (int i = 0; i < first; i++) {
-			if (getObjectIndex(_blastObjectQueue[i].number) != -1)
-				drawBlastObject(&_blastObjectQueue[i]);
+	_blastDst = nullptr;
+
+	if (coin && (int)_prevMain.size() == w * h) {
+		// The verb coin is drawn on the main screen: copy what changed there around it over the chest
+		const VirtScreen &vs = _virtscr[kMainVirtScreen];
+		const int cx = _scummVars[318] - (VAR(VAR_CAMERA_POS_X) - w / 2);
+		const int cy = _scummVars[319] - (VAR(VAR_CAMERA_POS_Y) - h / 2);
+		const Common::Rect area(MAX(cx - 150, 0), MAX(cy - 150, 0), MIN(cx + 150, w), MIN(cy + 150, h));
+		for (int y = area.top; y < area.bottom; y++) {
+			const byte *cur = (const byte *)vs.getPixels(0, y);
+			for (int x = area.left; x < area.right; x++) {
+				if (cur[x] != _prevMain[y * w + x])
+					_blastBuffer[y * w + x] = cur[x];
+			}
 		}
 	}
-	_blastDst = nullptr;
 
 	const Graphics::PixelFormat format = g_system->getOverlayFormat();
 	Graphics::Surface image;
