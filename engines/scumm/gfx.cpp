@@ -402,7 +402,7 @@ void ScummEngine::initScreens(int b, int h) {
 
 void ScummEngine::updateSplitScreen() {
 	const VirtScreen &verbs = _virtscr[kVerbVirtScreen];
-	bool split = _game.version <= 5 && !_macScreen && _game.platform != Common::kPlatformFMTowns &&
+	bool split = (_game.version <= 5 || (_game.version == 6 && _game.heversion == 0)) && !_macScreen && _game.platform != Common::kPlatformFMTowns &&
 	             _game.platform != Common::kPlatformNES && verbs.h > 0 &&
 	             g_system->hasFeature(OSystem::kFeatureSplitScreen) &&
 	             (!ConfMan.hasKey("dual_screen") || ConfMan.getBool("dual_screen"));

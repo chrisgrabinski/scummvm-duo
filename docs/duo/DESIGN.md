@@ -41,7 +41,7 @@ whole (verb box, inventory box), 6 verb texts inside the verb box.
 ### SCUMM engine
 
 - `engines/scumm/gfx.cpp`: `updateSplitScreen()` enables the layout when the verb screen exists
-  (SCUMM v0-v5, not Mac, FM Towns or NES) and disables it otherwise, for example in cutscenes.
+  (SCUMM v0-v6 without Humongous Entertainment games, not Mac, FM Towns or NES) and disables it otherwise, for example in cutscenes.
 - `engines/scumm/verbs.cpp`: `updateSplitScreenElements()` reports the interface elements once
   per frame when they change. Zak and Maniac Mansion report text verbs and inventory entries;
   Fate of Atlantis and Monkey Island (VGA) report the boxes to show whole.

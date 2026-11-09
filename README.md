@@ -28,7 +28,8 @@ Checked on a Pixel 9 Pro by looking at the result (Zak, Fate of Atlantis and Mon
 | Indiana Jones and the Fate of Atlantis | Whole verb box, stretched to full width with equal columns, above the whole inventory box |
 | The Secret of Monkey Island (VGA) | Same as Fate of Atlantis |
 | Other SCUMM v3-v5 games | Scene on top, the original bottom strip stretched below it |
-| SCUMM v6+ and HE games, Mac / FM Towns / NES versions | Unchanged (normal full-screen layout) |
+| Day of the Tentacle, Sam & Max Hit the Road (SCUMM v6) | Same plain layout; not looked at yet and not tuned to their interfaces |
+| SCUMM v7+ and HE games, Mac / FM Towns / NES versions | Unchanged (normal full-screen layout) |
 
 Everything else in ScummVM behaves as in upstream. Only the SCUMM engine is wired up.
 Cutscenes without a verb bar use the normal full-screen layout.
