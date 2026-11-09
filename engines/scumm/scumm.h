@@ -1434,6 +1434,8 @@ protected:
 	void initScreens(int b, int h);
 	void updateSplitScreen();
 	void updateSplitScreenElements();
+	void updateScreenSnapshot();
+	OSystem::ScreenSnapshotMode _screenSnapshotMode = OSystem::kSnapshotOff;
 	virtual void addSplitScreenInventory(Common::Array<OSystem::SplitScreenElement> &elements) {}
 
 	Common::Array<OSystem::SplitScreenElement> _splitScreenElements;

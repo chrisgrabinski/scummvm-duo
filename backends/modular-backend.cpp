@@ -52,6 +52,10 @@ void ModularGraphicsBackend::setSplitScreenElements(const Common::Array<SplitScr
 	_graphicsManager->setSplitScreenElements(elements);
 }
 
+void ModularGraphicsBackend::setScreenSnapshotMode(ScreenSnapshotMode mode) {
+	_graphicsManager->setScreenSnapshotMode(mode);
+}
+
 bool ModularGraphicsBackend::getFeatureState(Feature f) {
 	return _graphicsManager->getFeatureState(f);
 }

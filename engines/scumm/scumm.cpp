@@ -487,6 +487,7 @@ ScummEngine::ScummEngine(OSystem *syst, const DetectorResult &dr)
 
 ScummEngine::~ScummEngine() {
 	g_system->setFeatureState(OSystem::kFeatureSplitScreen, false);
+	g_system->setScreenSnapshotMode(OSystem::kSnapshotOff);
 
 	delete _musicEngine;
 
@@ -3329,6 +3330,7 @@ load_game:
 
 		scummLoop_handleDrawing();
 		updateSplitScreenElements();
+		updateScreenSnapshot();
 
 		scummLoop_handleActors();
 

@@ -46,6 +46,16 @@ whole (verb box, inventory box), 6 verb texts inside the verb box.
   per frame when they change. Zak and Maniac Mansion report text verbs and inventory entries;
   Fate of Atlantis and Monkey Island (VGA) report the boxes to show whole.
 
+## Sam & Max
+
+The inventory box of Sam & Max is a set of room objects drawn over the scene, so the scene and
+the box can never be shown apart by moving rectangles. `OSystem::setScreenSnapshotMode()` lets the
+engine ask the backend to keep a copy of the latest frame (`kSnapshotRolling`) and, while the box
+is open (room object 995), to show the game screen twice, stacked: the copy from just before the
+box opened on top (the scene, frozen) and the live screen below. Taps on the upper screen are
+ignored; taps on the lower one go to the game. The box is still opened and closed with the game's
+own button.
+
 ## Adding a game
 
 Report its interface in `ScummEngine::updateSplitScreenElements()`. For games whose interface is

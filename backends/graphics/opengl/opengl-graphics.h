@@ -65,6 +65,7 @@ public:
 	// GraphicsManager API
 	bool hasFeature(OSystem::Feature f) const override;
 	void setFeatureState(OSystem::Feature f, bool enable) override;
+	void setScreenSnapshotMode(OSystem::ScreenSnapshotMode mode) override;
 	bool getFeatureState(OSystem::Feature f) const override;
 
 	const OSystem::GraphicsMode *getSupportedGraphicsModes() const override;
@@ -360,6 +361,13 @@ protected:
 	 * The rendering surface for the virtual game screen.
 	 */
 	Surface *_gameScreen;
+
+	/**
+	 * A copy of the latest game screen, see OSystem::setScreenSnapshotMode().
+	 */
+	Surface *_snapshot = nullptr;
+	bool _snapshotRolling = false;
+	void updateSnapshot();
 
 #if defined(USE_OPENGL_GAME) || defined(USE_OPENGL_SHADERS)
 	/**

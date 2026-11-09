@@ -552,6 +552,24 @@ void ScummEngine_v2::addSplitScreenInventory(Common::Array<OSystem::SplitScreenE
 	}
 }
 
+// In Sam & Max the inventory is a box made of room objects that covers the scene. While it
+// is open, keep showing the scene on the upper screen and the box on the lower one.
+void ScummEngine::updateScreenSnapshot() {
+	if (_game.id != GID_SAMNMAX || !g_system->hasFeature(OSystem::kFeatureSplitScreen))
+		return;
+
+	const int kBoxObject = 995;
+	bool open = false;
+	for (int i = 1; i < _numLocalObjects && !open; i++)
+		open = _objs[i].obj_nr == kBoxObject && _objs[i].state != 0;
+
+	const OSystem::ScreenSnapshotMode mode = open ? OSystem::kSnapshotFrozenTop : OSystem::kSnapshotRolling;
+	if (mode != _screenSnapshotMode) {
+		_screenSnapshotMode = mode;
+		g_system->setScreenSnapshotMode(mode);
+	}
+}
+
 void ScummEngine::updateSplitScreenElements() {
 	if (!g_system->getFeatureState(OSystem::kFeatureSplitScreen))
 		return;

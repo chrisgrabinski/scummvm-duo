@@ -679,6 +679,19 @@ public:
 	 */
 	virtual void setSplitScreenElements(const Common::Array<SplitScreenElement> &elements) {}
 
+	enum ScreenSnapshotMode {
+		kSnapshotOff,       ///< Normal display
+		kSnapshotRolling,   ///< The backend keeps a copy of the latest frame
+		kSnapshotFrozenTop  ///< Show the game screen twice, stacked: the kept copy on top, the live one below
+	};
+
+	/**
+	 * Lets a game show its screen twice, for example to keep the scene visible
+	 * while an overlay that covers it is shown on the other screen. Needs
+	 * kFeatureSplitScreen.
+	 */
+	virtual void setScreenSnapshotMode(ScreenSnapshotMode mode) {}
+
 	/**
 	 * Determine whether the backend supports the specified feature.
 	 */

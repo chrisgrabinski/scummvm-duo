@@ -227,6 +227,12 @@ protected:
 	 * overlay-to-window).
 	 */
 	Common::Point convertVirtualToWindow(const int x, const int y) const {
+		if (isStackedInGame()) {
+			const Common::Rect &r = _splitBottomRect;
+			return Common::Point(CLIP<int>(r.left + (x * r.width() + getWidth() / 2) / getWidth(), r.left, r.right - 1),
+			                     CLIP<int>(r.top + (y * r.height() + getHeight() / 2) / getHeight(), r.top, r.bottom - 1));
+		}
+
 		if (isSplitScreenInGame() && _splitScreenPanel && y >= _splitScreenRow)
 			return _splitLayout.gameToWindow(x, y);
 
@@ -282,6 +288,18 @@ protected:
 	 * window-to-overlay).
 	 */
 	Common::Point convertWindowToVirtual(int x, int y) const {
+		if (isStackedInGame()) {
+			// The upper screen is only to look at: taps there do not move the pointer
+			if (y < (_splitTopRect.bottom + _splitBottomRect.top) / 2)
+				return _stackedLastPoint;
+			const Common::Rect &r = _splitBottomRect;
+			x = CLIP<int>(x, r.left, r.right - 1);
+			y = CLIP<int>(y, r.top, r.bottom - 1);
+			_stackedLastPoint = Common::Point(CLIP<int>((x - r.left) * getWidth() / r.width(), 0, getWidth() - 1),
+			                                  CLIP<int>((y - r.top) * getHeight() / r.height(), 0, getHeight() - 1));
+			return _stackedLastPoint;
+		}
+
 		if (isSplitScreenInGame()) {
 			// Points in the gap between both areas go to the nearest one
 			const bool top = y < (_splitTopRect.bottom + _splitBottomRect.top) / 2;
@@ -411,7 +429,17 @@ protected:
 				getWidth() * getGameRenderScale(), getHeight() * getGameRenderScale(),
 				safeArea, _gameDrawRect);
 
-		if (isSplitScreenInGame()) {
+		if (isStackedInGame()) {
+			const int half = safeArea.height() / 2;
+			const Common::Rect upper(safeArea.left, safeArea.top, safeArea.right, safeArea.top + half);
+			const Common::Rect lower(safeArea.left, safeArea.top + half, safeArea.right, safeArea.bottom);
+			populateDisplayAreaDrawRect(getDesiredGameAspectRatio(), getWidth() * getGameRenderScale(),
+					getHeight() * getGameRenderScale(), upper, _splitTopRect);
+			populateDisplayAreaDrawRect(getDesiredGameAspectRatio(), getWidth() * getGameRenderScale(),
+					getHeight() * getGameRenderScale(), lower, _splitBottomRect);
+			_gameDrawRect = _splitTopRect;
+			_gameDrawRect.extend(_splitBottomRect);
+		} else if (isSplitScreenInGame()) {
 			populateSplitScreenRects(safeArea);
 			_gameDrawRect = _splitTopRect;
 			_gameDrawRect.extend(_splitBottomRect);
@@ -548,6 +576,16 @@ protected:
 	 */
 	Common::Rect _splitTopRect;
 	Common::Rect _splitBottomRect;
+
+	/**
+	 * Whether the game screen is shown twice, stacked (see OSystem::kSnapshotFrozenTop).
+	 */
+	bool _stackedScreens = false;
+	mutable Common::Point _stackedLastPoint = Common::Point(160, 100);
+
+	bool isStackedInGame() const {
+		return _stackedScreens && !_overlayInGUI && _rotationMode == Common::kRotationNormal;
+	}
 
 	bool isSplitScreenInGame() const {
 		return _splitScreenActive && !_overlayInGUI &&

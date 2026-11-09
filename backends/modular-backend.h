@@ -57,6 +57,7 @@ public:
 	void setFeatureState(Feature f, bool enable) override;
 	bool getFeatureState(Feature f) override;
 	void setSplitScreenElements(const Common::Array<SplitScreenElement> &elements) override;
+	void setScreenSnapshotMode(ScreenSnapshotMode mode) override;
 
 	//@}
 

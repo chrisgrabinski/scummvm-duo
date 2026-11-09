@@ -101,6 +101,7 @@ OpenGLGraphicsManager::OpenGLGraphicsManager()
 
 OpenGLGraphicsManager::~OpenGLGraphicsManager() {
 	delete _gameScreen;
+	delete _snapshot;
 #if defined(USE_OPENGL_GAME) || defined(USE_OPENGL_SHADERS)
 	delete _renderer3d;
 #endif
@@ -152,6 +153,34 @@ bool OpenGLGraphicsManager::hasFeature(OSystem::Feature f) const {
 	default:
 		return false;
 	}
+}
+
+void OpenGLGraphicsManager::setScreenSnapshotMode(OSystem::ScreenSnapshotMode mode) {
+	_snapshotRolling = mode == OSystem::kSnapshotRolling;
+	if (mode == OSystem::kSnapshotOff) {
+		delete _snapshot;
+		_snapshot = nullptr;
+	}
+
+	const bool stacked = mode == OSystem::kSnapshotFrozenTop && _snapshot;
+	if (stacked != _stackedScreens) {
+		_stackedScreens = stacked;
+		recalculateDisplayAreas();
+		recalculateCursorScaling();
+	}
+}
+
+void OpenGLGraphicsManager::updateSnapshot() {
+	const Graphics::Surface *src = _gameScreen->getSurface();
+	if (!_snapshot || _snapshot->getWidth() != src->w || _snapshot->getHeight() != src->h) {
+		delete _snapshot;
+		_snapshot = createSurface(src->format, false, false);
+		_snapshot->allocate(src->w, src->h);
+	}
+
+	_snapshot->copyRectToTexture(0, 0, src->w, src->h, src->getPixels(), src->pitch);
+	if (_snapshot->hasPalette())
+		_snapshot->setPalette(0, 256, _gamePalette);
 }
 
 void OpenGLGraphicsManager::setFeatureState(OSystem::Feature f, bool enable) {
@@ -817,7 +846,11 @@ void OpenGLGraphicsManager::updateScreen() {
 	_targetBuffer->enableBlend(Framebuffer::kBlendModeOpaque);
 
 	// First step: Draw the (virtual) game screen.
-	if (_gameScreen && isSplitScreenInGame()) {
+	if (_gameScreen && isStackedInGame() && _snapshot) {
+		_snapshot->updateGLTexture();
+		_pipeline->drawTexture(_snapshot->getGLTexture(), _splitTopRect.left, _splitTopRect.top, _splitTopRect.width(), _splitTopRect.height());
+		_pipeline->drawTexture(_gameScreen->getGLTexture(), _splitBottomRect.left, _splitBottomRect.top, _splitBottomRect.width(), _splitBottomRect.height());
+	} else if (_gameScreen && isSplitScreenInGame()) {
 		const Texture &tex = _gameScreen->getGLTexture();
 		const Common::Rect topClip(0, 0, _gameScreen->getWidth(), _splitScreenRow);
 		const Common::Rect bottomClip(0, _splitScreenRow, _gameScreen->getWidth(), _gameScreen->getHeight());
@@ -955,6 +988,9 @@ void OpenGLGraphicsManager::updateScreen() {
 		                       dstX, dstY, osdWidth, osdHeight);
 	}
 #endif
+
+	if (_snapshotRolling && _gameScreen)
+		updateSnapshot();
 
 	_cursorNeedsRedraw = false;
 	_forceRedraw = false;
@@ -1962,7 +1998,10 @@ void OpenGLGraphicsManager::recalculateCursorScaling() {
 		int rotatedWidth = _gameDrawRect.width();
 		int rotatedHeight = _gameDrawRect.height();
 		int cursorRefHeight = _gameScreen->getHeight();
-		if (isSplitScreenInGame()) {
+		if (isStackedInGame()) {
+			rotatedWidth = _splitBottomRect.width();
+			rotatedHeight = _splitBottomRect.height();
+		} else if (isSplitScreenInGame()) {
 			rotatedWidth = _splitTopRect.width();
 			rotatedHeight = _splitTopRect.height();
 			cursorRefHeight = _splitScreenRow;

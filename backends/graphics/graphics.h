@@ -43,6 +43,7 @@ public:
 	virtual void setFeatureState(OSystem::Feature f, bool enable) = 0;
 	virtual bool getFeatureState(OSystem::Feature f) const = 0;
 	virtual void setSplitScreenElements(const Common::Array<OSystem::SplitScreenElement> &elements) {}
+	virtual void setScreenSnapshotMode(OSystem::ScreenSnapshotMode mode) {}
 
 	virtual const OSystem::GraphicsMode *getSupportedGraphicsModes() const {
 		static const OSystem::GraphicsMode noGraphicsModes[] = {{"NONE", "Normal", 0}, {nullptr, nullptr, 0 }};
