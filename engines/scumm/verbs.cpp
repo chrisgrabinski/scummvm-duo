@@ -805,10 +805,10 @@ void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, int what) {
 void ScummEngine::updateSplitScreenElements() {
 	if (!g_system->getFeatureState(OSystem::kFeatureSplitScreen))
 		return;
-	if (_game.version == 0 || (_game.version > 2 && _game.id != GID_INDY4 && _game.id != GID_MONKEY && _game.id != GID_TENTACLE))
+	if (_game.version == 0 || (_game.version > 2 && _game.id != GID_INDY4 && _game.id != GID_MONKEY && _game.id != GID_MONKEY2 && _game.id != GID_TENTACLE))
 		return;
-	// Monkey Island (VGA) and Day of the Tentacle have the verbs at the left and the inventory at their right
-	const bool monkey = _game.id == GID_MONKEY || _game.id == GID_TENTACLE;
+	// Monkey Island (VGA), Monkey Island 2 and Day of the Tentacle have the verbs at the left and the inventory at their right
+	const bool monkey = _game.id == GID_MONKEY || _game.id == GID_MONKEY2 || _game.id == GID_TENTACLE;
 	const int inventoryRight = _game.id == GID_TENTACLE ? 280 : _screenWidth;
 
 	const VirtScreen &vs = _virtscr[kVerbVirtScreen];
