@@ -1440,6 +1440,7 @@ protected:
 	int _lowerPanelRoom = -1;
 	int _lowerPanelWait = 0;
 	virtual void updateLowerPanel() {}
+	virtual void finishLowerScreen() {}
 	virtual void handleLowerScreenTouch(Common::Point p, int what) {}
 	OSystem::ScreenSnapshotMode _screenSnapshotMode = OSystem::kSnapshotOff;
 	virtual void addSplitScreenInventory(Common::Array<OSystem::SplitScreenElement> &elements) {}

@@ -1872,14 +1872,6 @@ bool ScummEngine_v6::setupComiChest() {
 			(_chestFrozen ? OSystem::kSnapshotFrozenTop : OSystem::kSnapshotLowerScreen));
 	}
 
-	if (layout && !coinOpen) {
-		// Remember the main screen, to see the coin on it later
-		const VirtScreen &vs = _virtscr[kMainVirtScreen];
-		const int w = vs.w, h = vs.h;
-		_prevMain.resize(w * h);
-		for (int y = 0; y < h; y++)
-			memcpy(&_prevMain[y * w], vs.getPixels(0, y), w);
-	}
 	return drawLower;
 }
 
@@ -1974,9 +1966,27 @@ void ScummEngine_v6::drawBlastObjectsToLowerScreen(int first, bool coin) {
 	}
 	_blastDst = nullptr;
 
-	if (coin && (int)_prevMain.size() == w * h) {
+	// The rest is done at the end of the frame, when everything is drawn
+	_lowerPending = true;
+}
+
+void ScummEngine_v6::finishLowerScreen() {
+	if (!_lowerPending)
+		return;
+	_lowerPending = false;
+
+	const VirtScreen &vs = _virtscr[kMainVirtScreen];
+	const int w = vs.w, h = vs.h;
+	if ((int)_blastBuffer.size() != w * h)
+		return;
+
+	if (!_chestFrozen) {
+		// Remember the main screen, to see the verb coin on it later
+		_prevMain.resize(w * h);
+		for (int y = 0; y < h; y++)
+			memcpy(&_prevMain[y * w], vs.getPixels(0, y), w);
+	} else if ((int)_prevMain.size() == w * h) {
 		// The verb coin is drawn on the main screen: copy what changed there around it over the chest
-		const VirtScreen &vs = _virtscr[kMainVirtScreen];
 		const int cx = _scummVars[318] - (VAR(VAR_CAMERA_POS_X) - w / 2);
 		const int cy = _scummVars[319] - (VAR(VAR_CAMERA_POS_Y) - h / 2);
 		// The options of the coin are within about 90 pixels of its center

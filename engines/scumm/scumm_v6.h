@@ -305,6 +305,8 @@ protected:
 	void drawBlastObjectsToLowerScreen(int first, bool coin);
 	Common::Array<byte> _prevMain;   // The main screen of the last frame without the verb coin
 	bool _chestFrozen = false;
+	bool _lowerPending = false;     // The chest was drawn this frame and is to be shown
+	void finishLowerScreen() override;
 	bool setupComiChest();
 	Graphics::Surface *_blastDst = nullptr;
 	Common::Array<byte> _blastBuffer;
