@@ -291,7 +291,7 @@ private:
 	// Redraws the box holding the verb texts so that its columns are as wide as
 	// the area and equally wide, keeping the texts centered in them at scale sy.
 	bool addStretchedBox(const Common::Rect &box, const Common::Array<Common::Rect> &texts,
-	                     const Common::Rect &area, float sy, float top, int fillX = -1) {
+	                     const Common::Rect &area, float sy, float top, int fillX = -1, bool narrowFirst = false) {
 		Common::Array<int> centersX, centersY, colReps, rowReps;
 		for (uint i = 0; i < texts.size(); i++) {
 			centersX.push_back((texts[i].left + texts[i].right) / 2);
@@ -331,6 +331,14 @@ private:
 		if (cw < 8 || left0 > box.left + 16 || rightN < box.right - 16)
 			return false;
 
+		if (narrowFirst) {
+			// Inventory: the first column (scroll arrows) keeps its own width, the slots lose their edge pixels
+			for (int c = 1; c < nCols; c++) {
+				spanA[c]++;
+				spanB[c]--;
+			}
+		}
+
 		// Without a frame, the buttons are not known to be equally wide: split between the texts
 		const bool midpoints = (int)(colCenter[0] - cw / 2 + 0.5f) < box.left + 3;
 		int maxSpan = 1;
@@ -340,7 +348,8 @@ private:
 		const float need = (frame + nCols * maxSpan) * sy;
 		if (need > area.width())
 			sy *= area.width() / need;
-		const float cellW = (area.width() - frame * sy) / nCols;
+		const float firstW = narrowFirst ? (spanB[0] - spanA[0]) * sy : 0;
+		const float cellW = narrowFirst ? (area.width() - frame * sy - firstW) / (nCols - 1) : (area.width() - frame * sy) / nCols;
 		const int bottom = (int)(top + box.height() * sy);
 
 		float dx = area.left;
@@ -348,10 +357,17 @@ private:
 		dx += (left0 - box.left) * sy;
 
 		Common::Array<float> cellX(nCols);
+		float cellW0 = 0;
 		for (int c = 0; c < nCols; c++) {
 			const int lc = MIN<int>(c == 0 ? left0 : midpoints ? (spanB[c - 1] + spanA[c]) / 2 : (int)(colCenter[c] - cw / 2 + 0.5f), spanA[c] - 1);
 			const int rc = MAX<int>(c == nCols - 1 ? rightN : midpoints ? (spanB[c] + spanA[c + 1]) / 2 : (int)(colCenter[c] + cw / 2 + 0.5f), spanB[c] + 1);
 			cellX[c] = dx;
+			if (narrowFirst && c == 0) {
+				addSeg(box, spanA[0], spanB[0], dx, dx + firstW, top, bottom);
+				cellW0 = firstW;
+				dx += firstW;
+				continue;
+			}
 			const float gapDst = (cellW - (spanB[c] - spanA[c]) * sy) / 2;
 			const int kl = MIN<int>(2, (spanA[c] - lc) / 2);
 			const int kr = MIN<int>(2, (rc - spanB[c]) / 2);
@@ -382,8 +398,9 @@ private:
 			const int r = indexOf(rowReps, centersY[i], 3);
 			const float y0 = MAX<float>(rowCenter[r] - ph / 2, box.top);
 			const float y1 = MIN<float>(rowCenter[r] + ph / 2, box.bottom);
+			const float hitW = (narrowFirst && c == 0) ? cellW0 : cellW;
 			const Common::Rect hit((int)cellX[c], (int)(top + (y0 - box.top) * sy),
-			                       (int)(cellX[c] + cellW), (int)(top + (y1 - box.top) * sy));
+			                       (int)(cellX[c] + hitW), (int)(top + (y1 - box.top) * sy));
 			addCell(texts[i], Common::Rect(), hit, false);
 		}
 		return true;
@@ -441,7 +458,7 @@ private:
 				continue;
 			const float h = boxes[b].height() * scale;
 			y -= h;
-			if (addStretchedBox(boxes[b], b == 0 ? texts : slots, area, scale, y, b == 0 ? -1 : boxes[b].left + 2)) {
+			if (addStretchedBox(boxes[b], b == 0 ? texts : slots, area, scale, y, b == 0 ? -1 : boxes[b].left + 2, b == 1)) {
 				// Done
 			} else {
 				const int dw = (int)(boxes[b].width() * scale);
