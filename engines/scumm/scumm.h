@@ -1437,6 +1437,8 @@ protected:
 	void updateScreenSnapshot();
 	Common::String _lowerPanelSignature;
 	bool _lowerPanelRunning = false;
+	int _lowerPanelRoom = -1;
+	int _lowerPanelWait = 0;
 	virtual void updateLowerPanel() {}
 	virtual void handleLowerScreenTouch(Common::Point p) {}
 	OSystem::ScreenSnapshotMode _screenSnapshotMode = OSystem::kSnapshotOff;

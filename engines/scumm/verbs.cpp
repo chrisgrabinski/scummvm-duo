@@ -563,18 +563,31 @@ void ScummEngine::updateScreenSnapshot() {
 	for (int i = 1; i < _numLocalObjects && !open; i++)
 		open = _objs[i].obj_nr == kBoxObject && _objs[i].state != 0;
 
-	const OSystem::ScreenSnapshotMode mode = open ? OSystem::kSnapshotFrozenTop : OSystem::kSnapshotLowerScreen;
+	// The game puts the button that opens the box, the actor 1, in the corner of the rooms that
+	// have an inventory. Allow a moment after a change of room for it to be put there.
+	Actor *button = _actors[1];
+	if (button && button->isInCurrentRoom()) {
+		_lowerPanelRoom = _currentRoom;
+		_lowerPanelWait = 0;
+	} else if (_lowerPanelRoom != _currentRoom) {
+		_lowerPanelWait++;
+	}
+	const bool hasInventory = _lowerPanelRoom == _currentRoom ||
+	                          (_lowerPanelWait < 30 && _screenSnapshotMode == OSystem::kSnapshotLowerScreen);
+
+	const OSystem::ScreenSnapshotMode mode = open ? OSystem::kSnapshotFrozenTop :
+		(hasInventory ? OSystem::kSnapshotLowerScreen : OSystem::kSnapshotRolling);
 	if (mode != _screenSnapshotMode) {
 		_screenSnapshotMode = mode;
 		g_system->setScreenSnapshotMode(mode);
 		_lowerPanelSignature.clear();
 	}
 	if (mode == OSystem::kSnapshotLowerScreen) {
-		// The button that opens the box is the actor 1 sitting in the corner: keep it out of the room
-		Actor *button = _actors[1];
+		// Keep the button out of the room, as the box is always shown on the lower screen
 		if (button && button->isInCurrentRoom())
 			button->putActor(0, 0, 0);
-		updateLowerPanel();
+		if (_lowerPanelRoom == _currentRoom)
+			updateLowerPanel();
 	}
 }
 
@@ -697,7 +710,7 @@ void ScummEngine_v6::renderLowerPanel() {
 }
 
 void ScummEngine_v6::handleLowerScreenTouch(Common::Point p) {
-	if (!_scummVars[178] || _userPut <= 0)
+	if (!_scummVars[178] || _userPut <= 0 || _lowerPanelRoom != _currentRoom)
 		return;
 
 	// Run the script the box uses for clicks (script 60) as if the box were open and
