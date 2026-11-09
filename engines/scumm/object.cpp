@@ -1979,11 +1979,14 @@ void ScummEngine_v6::drawBlastObjectsToLowerScreen(int first, bool coin) {
 		const VirtScreen &vs = _virtscr[kMainVirtScreen];
 		const int cx = _scummVars[318] - (VAR(VAR_CAMERA_POS_X) - w / 2);
 		const int cy = _scummVars[319] - (VAR(VAR_CAMERA_POS_Y) - h / 2);
-		const Common::Rect area(MAX(cx - 150, 0), MAX(cy - 150, 0), MIN(cx + 150, w), MIN(cy + 150, h));
+		// The options of the coin are within about 90 pixels of its center
+		const int kRadius = 100;
+		const Common::Rect area(MAX(cx - kRadius, 0), MAX(cy - kRadius, 0), MIN(cx + kRadius, w), MIN(cy + kRadius, h));
 		for (int y = area.top; y < area.bottom; y++) {
 			const byte *cur = (const byte *)vs.getPixels(0, y);
 			for (int x = area.left; x < area.right; x++) {
-				if (cur[x] != _prevMain[y * w + x])
+				const int dx = x - cx, dy = y - cy;
+				if (dx * dx + dy * dy <= kRadius * kRadius && cur[x] != _prevMain[y * w + x])
 					_blastBuffer[y * w + x] = cur[x];
 			}
 		}
