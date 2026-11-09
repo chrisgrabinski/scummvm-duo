@@ -42,6 +42,20 @@ void ScummEngine::runScript(int script, bool freezeResistant, bool recursive, in
 	byte scriptType;
 	int slot;
 
+	// Sam & Max: while the lower screen runs the inventory box's click script (60), the
+	// box is neither drawn (59) nor closed (62), but the verb that closing it would run is
+	if (_lowerPanelRunning) {
+		if (script == 59)
+			return;
+		if (script == 62) {
+			if (lvarptr && lvarptr[0] && (lvarptr[1] == 3 || lvarptr[1] == 4)) {
+				int args[25] = {0};
+				runObjectScript(lvarptr[0], lvarptr[1], false, true, args);
+			}
+			return;
+		}
+	}
+
 	// WORKAROUND for crash (#15256) in Maniac Mansion C64 demo:
 	// Attempting to, as any character, give the can of Pepsi to any other character
 	// attempts to start script 43. Unfortunately script 43 does not exist in

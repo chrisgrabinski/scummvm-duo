@@ -57,6 +57,13 @@ unchanged from that copy painted black, so that only the box remains. Taps on th
 ignored; taps on the lower one go to the game. The box is still opened and closed with the game's
 own button.
 
+The lower screen (`kSnapshotLowerScreen`) shows the box all the time. The engine draws the box
+and its icons (the objects script 59 would draw) offscreen with the regular object code, by
+temporarily pointing the main virtual screen at a spare buffer, and gives the result to the
+backend with `setLowerScreenImage()`. Taps there arrive as `EVENT_LOWER_SCREEN_TOUCH` and make the
+engine run script 60, the box's click script, with the position of the tap; while it runs, scripts
+59 (draw the box) and 62 (close it) are not run, only the verb that closing would start.
+
 ## Adding a game
 
 Report its interface in `ScummEngine::updateSplitScreenElements()`. For games whose interface is

@@ -577,8 +577,9 @@ void ScummEngine::updateScreenSnapshot() {
 // The lower screen shows the same box, drawn here offscreen, and a tap on it does what script 60
 // would do with the box open, without ever opening it.
 void ScummEngine_v6::updateLowerPanel() {
+	// Not while the game does not take input, for example in cutscenes
 	const int kInventoryArray = 178;
-	if (!_scummVars[kInventoryArray])
+	if (!_scummVars[kInventoryArray] || _userPut <= 0)
 		return;
 	const ArrayHeader *ah = getArray(kInventoryArray);
 	if (!ah || FROM_LE_16(ah->dim1) * FROM_LE_16(ah->dim2) <= 80)
@@ -690,47 +691,17 @@ void ScummEngine_v6::renderLowerPanel() {
 }
 
 void ScummEngine_v6::handleLowerScreenTouch(Common::Point p) {
-	const int kInventoryArray = 178;
-	if (!_scummVars[kInventoryArray])
+	if (!_scummVars[178] || _userPut <= 0)
 		return;
 
-	// The cell of the tap, as in script 60
-	const int col = p.x / 40, row = p.y / 24;
-	if (row < 1 || col < 1 || col > 6)
-		return;
-	const int idx = (row - 1) * 6 + col;
-	if (idx < 1 || idx > 5)
-		return;
-
-	int cursor;
-	switch (readArray(kInventoryArray, 0, idx)) {
-	case 879:
-		cursor = 875;
-		break;
-	case 880:
-		cursor = 876;
-		break;
-	case 881:
-		cursor = 877;
-		break;
-	case 882:
-		cursor = 878;
-		break;
-	default:
-		return;
-	}
-
-	// Put back the object being held
-	if (_scummVars[181]) {
-		int args[25] = {0};
-		args[0] = _scummVars[181];
-		runScript(52, false, false, args);
-		_scummVars[181] = 0;
-		_scummVars[180] = 0;
-	}
-
-	_scummVars[177] = cursor;
-	setCursorFromImg(cursor, 93, 1);
+	// Run the script the box uses for clicks (script 60) as if the box were open and
+	// the tap was in it
+	_scummVars[VAR_VIRT_MOUSE_X] = _scummVars[VAR_CAMERA_POS_X] - 160 + p.x;
+	_scummVars[VAR_VIRT_MOUSE_Y] = p.y;
+	int args[25] = {2, 0, 1};
+	_lowerPanelRunning = true;
+	runScript(60, false, false, args);
+	_lowerPanelRunning = false;
 }
 
 void ScummEngine::updateSplitScreenElements() {
