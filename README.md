@@ -30,7 +30,7 @@ Checked on a Pixel 9 Pro by looking at the result (Zak, Fate of Atlantis and Mon
 | Other SCUMM v3-v5 games | Scene on top, the original bottom strip stretched below it |
 | Day of the Tentacle | Same as Monkey Island (VGA); the inventory edge is a guess from one screenshot |
 | Sam & Max Hit the Road | The live scene on the top screen and the cardboard-box inventory permanently on the bottom screen; tapping it runs the game's own box script. Verb icons and the look verb on an item checked on a phone. The button that opens the game's box is removed, so the game's own box no longer opens |
-| The Curse of Monkey Island (v8) | Normal full screen. While the inventory chest is open, the scene stays visible on the top screen and the chest is on the bottom screen; tapping it clicks at the same place. The chest is not permanently visible yet. Checked on a phone |
+| The Curse of Monkey Island (v8) | The scene on the top screen; the chest is always visible on the bottom screen and tapping it clicks at the same place. The verb coin of a right click on an item opens on the bottom screen, items react to hovering, and a right click on the top screen does not open the game's own inventory. Checked on a phone |
 | SCUMM v7 and HE games, Mac / FM Towns / NES versions | Unchanged (normal full-screen layout) |
 
 Everything else in ScummVM behaves as in upstream. Only the SCUMM engine is wired up.

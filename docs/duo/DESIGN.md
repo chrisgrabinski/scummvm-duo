@@ -78,6 +78,21 @@ objects into a separate image (`drawBlastObjectsToLowerScreen()`) shown on the l
 back as mouse events at the same position, so the game's own code handles it. The game still freezes
 the camera while the chest is open.
 
+The chest is always on the lower screen. When the game has not opened it, `setupComiChest()` runs the
+drawing script (47) itself, keeps the resulting blast objects and queues them again each frame, so the
+game can hit-test them. Details that took some care:
+
+- Presses on the lower screen count only on items and arrows (or on the coin), so an empty part of the
+  chest never clicks through to the scene. The game is put in its inventory mode (variable 312 = 3) for a
+  tap and, while the pointer hovers there, for as long as it stays, so the cursor reacts to items.
+- The verb coin is drawn on the main screen, not as blast objects. While it is open after a press on the
+  lower screen, the top screen is frozen (`kSnapshotFrozenTop`) and a circle around the coin is copied from
+  the main screen over the chest at the end of the frame (`finishLowerScreen()`). The circle's size and
+  center were measured by eye from screenshots.
+- A right click on the top screen would open the game's own inventory, so it is dropped while the
+  chest is on the lower screen.
+- The chest is shown only while the hero is in the room, not in menus or cutscenes.
+
 ## Adding a game
 
 Report its interface in `ScummEngine::updateSplitScreenElements()`. For games whose interface is
