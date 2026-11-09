@@ -844,7 +844,7 @@ void ScummEngine::updateSplitScreenElements() {
 			e.src = v.curRect;
 			if (_game.version <= 2) {
 				e.group = 1;
-			} else if (v.type != kImageVerbType && v.curRect.top < vs.topline + 8) {
+			} else if (!dialog && v.type != kImageVerbType && v.curRect.top < vs.topline + 8) {
 				_splitSentenceRect = v.curRect;
 				continue;
 			} else if (monkey && dialog) {
@@ -886,7 +886,7 @@ void ScummEngine::updateSplitScreenElements() {
 		elements.push_back(e);
 	}
 
-	if (_game.version > 2) {
+	if (_game.version > 2 && !dialog) {
 		if (_splitSentenceRect.isEmpty())
 			_splitSentenceRect = Common::Rect(0, vs.topline, _screenWidth, vs.topline + 8);
 		e.group = 0;
