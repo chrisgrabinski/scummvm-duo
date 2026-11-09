@@ -107,7 +107,8 @@ inventory box (group 5), and the layout shows the two boxes whole, one above the
   is kept at its size and centered. The first column (the arrows) keeps its own width at the left,
   with no extra background. The arrow cells are always reported, as the arrows come and go.
 - A conversation replaces the verbs by lines of text, which are wider than the verb box. It is
-  detected by a text verb wider than 150 pixels. Then the lines are reported as rows (group 1), the
+  detected by a text verb wider than 150 pixels (Monkey Island 2), or by a text verb at the left edge
+  (Monkey Island 1: its lines are small and narrow, and no normal verb starts there). Then the lines are reported as rows (group 1), the
   first line included, which would else look like the sentence line, and there are no boxes.
 
 After a change to `split-screen-layout.h`, touch the `.cpp` files that include it (the build does
