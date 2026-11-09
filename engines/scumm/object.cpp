@@ -1790,6 +1790,22 @@ void ScummEngine_v6::drawBlastObjects() {
 	BlastObject *eo;
 	int i;
 
+	if (_game.id == GID_CMI && g_system->hasFeature(OSystem::kFeatureSplitScreen)) {
+		const int kChestObject = 114;
+		bool chest = false;
+		for (i = 0; i < _blastObjectQueuePos; i++)
+			chest = chest || _blastObjectQueue[i].number == kChestObject;
+
+		if (chest != _chestOnLower) {
+			_chestOnLower = chest;
+			g_system->setScreenSnapshotMode(chest ? OSystem::kSnapshotLowerScreen : OSystem::kSnapshotOff);
+		}
+		if (chest) {
+			drawBlastObjectsToLowerScreen();
+			return;
+		}
+	}
+
 	eo = _blastObjectQueue;
 	for (i = 0; i < _blastObjectQueuePos; i++, eo++) {
 		drawBlastObject(eo);
@@ -1828,8 +1844,12 @@ void ScummEngine_v6::drawBlastObject(BlastObject *eo) {
 	if (!bomp)
 		error("object %d is not a blast object", eo->number);
 
-	bdd.dst = *vs;
-	bdd.dst.setPixels(vs->getPixels(0, 0));
+	if (_blastDst) {
+		bdd.dst = *_blastDst;
+	} else {
+		bdd.dst = *vs;
+		bdd.dst.setPixels(vs->getPixels(0, 0));
+	}
 	bdd.x = eo->rect.left;
 	bdd.y = eo->rect.top;
 
@@ -1865,7 +1885,33 @@ void ScummEngine_v6::drawBlastObject(BlastObject *eo) {
 
 	drawBomp(bdd);
 
-	markRectAsDirty(vs->number, bdd.x, bdd.x + bdd.srcwidth, bdd.y, bdd.y + bdd.srcheight);
+	if (!_blastDst)
+		markRectAsDirty(vs->number, bdd.x, bdd.x + bdd.srcwidth, bdd.y, bdd.y + bdd.srcheight);
+}
+
+void ScummEngine_v6::drawBlastObjectsToLowerScreen() {
+	const int w = _virtscr[kMainVirtScreen].w, h = _virtscr[kMainVirtScreen].h;
+	_blastBuffer.resize(w * h);
+	memset(_blastBuffer.data(), 0, _blastBuffer.size());
+
+	Graphics::Surface dst;
+	dst.init(w, h, w, _blastBuffer.data(), Graphics::PixelFormat::createFormatCLUT8());
+	_blastDst = &dst;
+	for (int i = 0; i < _blastObjectQueuePos; i++)
+		drawBlastObject(&_blastObjectQueue[i]);
+	_blastDst = nullptr;
+
+	const Graphics::PixelFormat format = g_system->getOverlayFormat();
+	Graphics::Surface image;
+	image.create(w, h, format);
+	for (int y = 0; y < h; y++) {
+		const byte *src = &_blastBuffer[y * w];
+		uint32 *out = (uint32 *)image.getBasePtr(0, y);
+		for (int x = 0; x < w; x++)
+			out[x] = format.ARGBToColor(255, _currentPalette[src[x] * 3], _currentPalette[src[x] * 3 + 1], _currentPalette[src[x] * 3 + 2]);
+	}
+	g_system->setLowerScreenImage(&image);
+	image.free();
 }
 
 void ScummEngine_v6::removeBlastObjects() {

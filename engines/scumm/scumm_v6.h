@@ -300,6 +300,12 @@ protected:
 	void updateLowerPanel() override;
 	void handleLowerScreenTouch(Common::Point p) override;
 	void renderLowerPanel();
+
+	// The Curse of Monkey Island: its inventory chest, made of blast objects, is shown on the lower screen
+	void drawBlastObjectsToLowerScreen();
+	Graphics::Surface *_blastDst = nullptr;
+	Common::Array<byte> _blastBuffer;
+	bool _chestOnLower = false;
 	void useIm01Cursor(const byte *im, int w, int h);
 	void useBompCursor(const byte *im, int w, int h);
 	void grabCursor(int x, int y, int w, int h);

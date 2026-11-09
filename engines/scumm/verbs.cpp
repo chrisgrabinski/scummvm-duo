@@ -710,6 +710,20 @@ void ScummEngine_v6::renderLowerPanel() {
 }
 
 void ScummEngine_v6::handleLowerScreenTouch(Common::Point p) {
+	if (_game.id == GID_CMI) {
+		// The chest is the game's own: a tap there is a click at the same position
+		Common::EventManager *events = g_system->getEventManager();
+		Common::Event event;
+		event.mouse = p;
+		event.type = Common::EVENT_MOUSEMOVE;
+		events->pushEvent(event);
+		event.type = Common::EVENT_LBUTTONDOWN;
+		events->pushEvent(event);
+		event.type = Common::EVENT_LBUTTONUP;
+		events->pushEvent(event);
+		return;
+	}
+
 	if (!_scummVars[178] || _userPut <= 0 || _lowerPanelRoom != _currentRoom)
 		return;
 
