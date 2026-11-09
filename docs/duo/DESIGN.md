@@ -68,6 +68,16 @@ so the engine converts between them around the call. The button that opens the b
 the game keeps in the bottom left corner of the scene (clicking it opens the box); it is kept out
 of the room.
 
+## The Curse of Monkey Island
+
+The inventory chest of The Curse of Monkey Island is made of blast objects (the chest, the scroll
+arrows and one per item), which the game's scripts queue every frame while it is open; the game finds what
+was clicked by testing the mouse position against them. While the chest is open, the engine draws these
+objects into a separate image (`drawBlastObjectsToLowerScreen()`) shown on the lower screen with
+`kSnapshotLowerScreen`, and does not draw them on the main screen. A tap on the lower screen is pushed
+back as mouse events at the same position, so the game's own code handles it. The game still freezes
+the camera while the chest is open.
+
 ## Adding a game
 
 Report its interface in `ScummEngine::updateSplitScreenElements()`. For games whose interface is
