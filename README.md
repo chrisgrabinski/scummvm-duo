@@ -1,14 +1,18 @@
 # ScummVM Duo
 
-An **unofficial** fork of [ScummVM](https://www.scummvm.org/) for Android that shows classic
-SCUMM adventures in a dual-screen style layout:
+An **unofficial** fork of [ScummVM](https://www.scummvm.org/) for Android, aimed at **dual-screen
+Android devices such as the Retroid Pocket Duo or the AYN Thor**. It shows classic SCUMM
+adventures the way a dual-screen handheld is meant to be used:
 
-- **Top:** only the scene (and the game's text line), scaled to the available space.
-- **Bottom:** the interface, laid out for touch: the sentence line, the verbs and the inventory
-  stacked vertically, with larger text and bigger tap targets.
+- **Top screen:** only the scene (and the game's text line), scaled to the available space.
+- **Bottom screen:** the interface, laid out for touch: the sentence line, the verbs and the
+  inventory stacked vertically, with larger text and bigger tap targets.
 
-It works in a single window, so it suits a normal phone or tablet, and also a dual-screen device
-where one window spans both panels. Driving a separate physical second display is not implemented.
+**Current state:** the two areas are drawn stacked in a single app window. That works on a
+normal phone or tablet and on a device where one window spans both panels. It has **not** been
+tried on a Retroid Pocket Duo or an AYN Thor, and **sending each area to its own physical
+display is not implemented yet**. So on a handheld with two separate displays, the app currently
+shows both areas on one of them. Driving the second display is the main piece of work still to do.
 
 This fork is not affiliated with or endorsed by the ScummVM team. For the regular ScummVM, see
 the [official site](https://www.scummvm.org/). The original project README is kept in
@@ -35,7 +39,7 @@ Known limitations:
   the VGA versions; other releases (EGA, Amiga, translations) may look off.
 - Zak and Maniac Mansion: the sentence line is scaled like the original, so it is smaller than
   the verbs.
-- Only tested on one device and a handful of rooms.
+- Only tested on one device (a Pixel 9 Pro, single screen) and a handful of rooms.
 - On a very tall portrait screen there is empty space between the scene and the interface.
 
 ## Using it
