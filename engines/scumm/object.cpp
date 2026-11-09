@@ -1817,6 +1817,10 @@ bool ScummEngine_v6::setupComiChest() {
 		}
 	}
 
+	// While the pointer is over the chest, the game keeps looking at it
+	if (_lowerHover && !_lowerDown && _scummVars[kModeVar] == kOpenMode && _chestTapFrames > 0)
+		_chestTapFrames = 6;
+
 	if (_chestTapFrames > 0 && --_chestTapFrames == 0 && _scummVars[kModeVar] == kOpenMode)
 		_scummVars[kModeVar] = 1;
 	if (_scummVars[kModeVar] == 1 && _chestTapFrames == 0)

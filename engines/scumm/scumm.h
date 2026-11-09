@@ -1440,6 +1440,8 @@ protected:
 	int _lowerPanelRoom = -1;
 	int _lowerPanelWait = 0;
 	virtual void updateLowerPanel() {}
+	bool _lowerHover = false;   // The pointer is over the lower screen
+	int _lowerPushed = 0;       // Events pushed for the lower screen, not yet read back
 	virtual void finishLowerScreen() {}
 	virtual void handleLowerScreenTouch(Common::Point p, int what) {}
 	OSystem::ScreenSnapshotMode _screenSnapshotMode = OSystem::kSnapshotOff;

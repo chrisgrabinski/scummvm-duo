@@ -726,6 +726,8 @@ void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, int what) {
 			Common::Event event;
 			event.type = Common::EVENT_MOUSEMOVE;
 			event.mouse = p;
+			_lowerHover = true;
+			_lowerPushed++;
 			g_system->getEventManager()->pushEvent(event);
 		}
 		return;
@@ -765,6 +767,8 @@ void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, int what) {
 		Common::Event event;
 		event.mouse = p;
 		event.type = Common::EVENT_MOUSEMOVE;
+		_lowerHover = true;
+		_lowerPushed += 2;
 		events->pushEvent(event);
 		static const Common::EventType types[4] = { Common::EVENT_LBUTTONDOWN, Common::EVENT_RBUTTONDOWN, Common::EVENT_LBUTTONUP, Common::EVENT_RBUTTONUP };
 		event.type = types[what & 3];
