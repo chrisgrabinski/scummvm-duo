@@ -93,6 +93,26 @@ game can hit-test them. Details that took some care:
   chest is on the lower screen.
 - The chest is shown only while the hero is in the room, not in menus or cutscenes.
 
+## Monkey Island, Monkey Island 2 and Day of the Tentacle
+
+These games keep the verbs in the left 144 columns of the verb screen and the inventory at their
+right. `updateSplitScreenElements()` reports the verb texts (group 6), a verb box (group 4) and an
+inventory box (group 5), and the layout shows the two boxes whole, one above the other.
+
+- The verb box is stretched to the full width, with equal columns and the texts centered in them
+  (`addStretchedBox()`).
+- Monkey Island 2 also reports its inventory slots (group 7): two scroll arrow cells and a 4 by 2 grid
+  of 40 by 24 pixel slots, from measurements of what the game draws. They go through the same code: the
+  slot columns are of equal width and stretched, filled with a plain background column, and each icon
+  is kept at its size and centered. The first column (the arrows) keeps its own width at the left,
+  with no extra background. The arrow cells are always reported, as the arrows come and go.
+- A conversation replaces the verbs by lines of text, which are wider than the verb box. It is
+  detected by a text verb wider than 150 pixels. Then the lines are reported as rows (group 1), the
+  first line included, which would else look like the sentence line, and there are no boxes.
+
+After a change to `split-screen-layout.h`, touch the `.cpp` files that include it (the build does
+not notice a changed header).
+
 ## Adding a game
 
 Report its interface in `ScummEngine::updateSplitScreenElements()`. For games whose interface is
