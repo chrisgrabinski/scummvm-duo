@@ -1820,11 +1820,10 @@ bool ScummEngine_v6::setupComiChest() {
 
 	if (_chestTapFrames > 0 && --_chestTapFrames == 0 && _scummVars[kModeVar] == kOpenMode)
 		_scummVars[kModeVar] = 1;
-
 	if (_scummVars[kModeVar] == 1 && _chestTapFrames == 0)
 		_coinFromLower = false;
 
-	// Only when playing: Guybrush is in the room, not in the menu or a cutscene
+	// Only when playing: Guybrush is in the room, not in the menu
 	const int ego = VAR(VAR_EGO);
 	const bool inGame = ego > 0 && ego < _numActors && _actors[ego] && _actors[ego]->isInCurrentRoom();
 
@@ -1836,14 +1835,19 @@ bool ScummEngine_v6::setupComiChest() {
 		for (int i = 1; i <= getInventoryCount(VAR(VAR_EGO)); i++)
 			sig += Common::String::format("%d,", findInventory(VAR(VAR_EGO), i));
 
-		if (sig != _chestSignature || ++_chestAge >= 8 || _chestBlasts.empty()) {
+		bool refresh = sig != _chestSignature || ++_chestAge >= 8 || _chestBlasts.empty();
+		for (uint i = 0; i < _chestBlasts.size() && !refresh; i++)
+			refresh = getObjectIndex(_chestBlasts[i].number) == -1; // The game unloaded it
+		if (refresh) {
 			_chestSignature = sig;
 			_chestAge = 0;
 			const int before = _blastObjectQueuePos;
 			runScript(kDrawScript, false, false, nullptr);
 			_chestBlasts.clear();
-			for (int i = before; i < _blastObjectQueuePos; i++)
-				_chestBlasts.push_back(_blastObjectQueue[i]);
+			for (int i = before; i < _blastObjectQueuePos; i++) {
+				if (getObjectIndex(_blastObjectQueue[i].number) != -1)
+					_chestBlasts.push_back(_blastObjectQueue[i]);
+			}
 			_blastObjectQueuePos = before;
 		}
 
@@ -1855,17 +1859,14 @@ bool ScummEngine_v6::setupComiChest() {
 		}
 	}
 
-	const bool show = _chestStart >= 0;
-	if (show)
-		_chestLostFrames = 0;
-	else if (_chestOnLower && ++_chestLostFrames < 30)
-		return false; // Keep the layout for a moment, for example around a cutscene
-
-	if (show != _chestOnLower) {
-		_chestOnLower = show;
-		g_system->setScreenSnapshotMode(show ? OSystem::kSnapshotLowerScreen : OSystem::kSnapshotOff);
+	// Keep the lower screen as it is while the game does not take input, for example in a dialog
+	const bool drawLower = _chestStart >= 0;
+	const bool layout = drawLower || (_chestOnLower && inGame);
+	if (layout != _chestOnLower) {
+		_chestOnLower = layout;
+		g_system->setScreenSnapshotMode(layout ? OSystem::kSnapshotLowerScreen : OSystem::kSnapshotOff);
 	}
-	return show;
+	return drawLower;
 }
 
 void ScummEngine_v6::drawBlastObject(BlastObject *eo) {
@@ -1953,12 +1954,16 @@ void ScummEngine_v6::drawBlastObjectsToLowerScreen(int first, bool coin) {
 	Graphics::Surface dst;
 	dst.init(w, h, w, _blastBuffer.data(), Graphics::PixelFormat::createFormatCLUT8());
 	_blastDst = &dst;
-	for (int i = first; i < _blastObjectQueuePos; i++)
-		drawBlastObject(&_blastObjectQueue[i]);
+	for (int i = first; i < _blastObjectQueuePos; i++) {
+		if (getObjectIndex(_blastObjectQueue[i].number) != -1)
+			drawBlastObject(&_blastObjectQueue[i]);
+	}
 	if (coin) {
 		// The verb coin over the chest
-		for (int i = 0; i < first; i++)
-			drawBlastObject(&_blastObjectQueue[i]);
+		for (int i = 0; i < first; i++) {
+			if (getObjectIndex(_blastObjectQueue[i].number) != -1)
+				drawBlastObject(&_blastObjectQueue[i]);
+		}
 	}
 	_blastDst = nullptr;
 

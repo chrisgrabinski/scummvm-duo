@@ -309,7 +309,6 @@ protected:
 	bool _chestOnLower = false;
 	bool _coinFromLower = false;   // The verb coin was opened by a tap on the lower screen
 	int _chestStart = -1;       // First chest entry of the blast object queue, if any
-	int _chestLostFrames = 0;
 	int _chestAge = 0;
 	int _chestTapFrames = 0;    // Frames left of the inventory mode for a tap on the lower screen
 	Common::String _chestSignature;
