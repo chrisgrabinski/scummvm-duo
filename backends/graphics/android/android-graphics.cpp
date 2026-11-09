@@ -362,8 +362,12 @@ int AndroidGraphicsManager::filterLowerScreenEvent(Common::Event &event) {
 	case Common::EVENT_RBUTTONUP:
 		event.customType = 3;
 		break;
+	case Common::EVENT_MOUSEMOVE:
+		// The pointer is shown there, and the engine hears of it, for things that react to hovering
+		setMousePosition(event.mouse.x, event.mouse.y);
+		event.customType = 4;
+		break;
 	default:
-		// The pointer can be moved over the lower screen, but the engine does not see it there
 		setMousePosition(event.mouse.x, event.mouse.y);
 		return 2;
 	}

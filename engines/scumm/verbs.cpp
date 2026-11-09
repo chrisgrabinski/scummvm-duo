@@ -716,6 +716,17 @@ void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, int what) {
 	if (_game.id == GID_SAMNMAX && what != 0)
 		return;
 
+	if (what == 4) {
+		// The pointer moved over the lower screen: the chest reacts to hovering, with a different cursor
+		if (_game.id == GID_CMI && _chestOnLower && !_lowerDown && _scummVars[312] == 1) {
+			Common::Event event;
+			event.type = Common::EVENT_MOUSEMOVE;
+			event.mouse = p;
+			g_system->getEventManager()->pushEvent(event);
+		}
+		return;
+	}
+
 	if (_game.id == GID_CMI) {
 		// The chest is the game's own: a press there is a click at the same position
 		const int kModeVar = 312;
