@@ -47,8 +47,11 @@ Known limitations:
 1. Build the APK (see [docs/duo/BUILDING.md](docs/duo/BUILDING.md)).
 2. Install it, open ScummVM, add your own copy of the game and start it.
 
-The split layout switches ScummVM to mouse touch mode (tap to move the pointer and click).
-The touch-mode button at the top right can still change it.
+Each time the split layout turns on, the app switches to mouse touch mode (tap to move the
+pointer and click), and it restores the previous mode when the layout turns off, for example in a
+cutscene without a verb bar. You can change the mode with the touch-mode button at the top right,
+but a mode you pick yourself is switched back to mouse mode the next time the layout turns on.
+This has only been looked at on one device.
 
 To turn the layout off, add this to `scummvm.ini` (in the app's data folder):
 
