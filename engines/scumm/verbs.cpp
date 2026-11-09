@@ -555,9 +555,11 @@ void ScummEngine_v2::addSplitScreenInventory(Common::Array<OSystem::SplitScreenE
 void ScummEngine::updateSplitScreenElements() {
 	if (!g_system->getFeatureState(OSystem::kFeatureSplitScreen))
 		return;
-	if (_game.version == 0 || (_game.version > 2 && _game.id != GID_INDY4 && _game.id != GID_MONKEY))
+	if (_game.version == 0 || (_game.version > 2 && _game.id != GID_INDY4 && _game.id != GID_MONKEY && _game.id != GID_TENTACLE))
 		return;
-	const bool monkey = _game.id == GID_MONKEY;
+	// Monkey Island (VGA) and Day of the Tentacle have the verbs at the left and the inventory at their right
+	const bool monkey = _game.id == GID_MONKEY || _game.id == GID_TENTACLE;
+	const int inventoryRight = _game.id == GID_TENTACLE ? 280 : _screenWidth;
 
 	const VirtScreen &vs = _virtscr[kVerbVirtScreen];
 	Common::Array<OSystem::SplitScreenElement> elements;
@@ -615,7 +617,7 @@ void ScummEngine::updateSplitScreenElements() {
 		e.src = Common::Rect(0, top, 144, bottom);
 		elements.push_back(e);
 		e.group = 5;
-		e.src = Common::Rect(144, top, _screenWidth, bottom);
+		e.src = Common::Rect(144, top, inventoryRight, bottom);
 		elements.push_back(e);
 	}
 
