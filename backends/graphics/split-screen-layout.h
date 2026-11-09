@@ -291,7 +291,7 @@ private:
 	// Redraws the box holding the verb texts so that its columns are as wide as
 	// the area and equally wide, keeping the texts centered in them at scale sy.
 	bool addStretchedBox(const Common::Rect &box, const Common::Array<Common::Rect> &texts,
-	                     const Common::Rect &area, float sy, float top) {
+	                     const Common::Rect &area, float sy, float top, int inset = 0) {
 		Common::Array<int> centersX, centersY, colReps, rowReps;
 		for (uint i = 0; i < texts.size(); i++) {
 			centersX.push_back((texts[i].left + texts[i].right) / 2);
@@ -361,9 +361,9 @@ private:
 				// leave a thin black border around it
 				const float textX = dx + gapDst;
 				const float textW = (spanB[c] - spanA[c]) * sy;
-				addSeg(box, spanA[c], spanA[c] + 1, dx + sy, textX, top, bottom);
+				addSeg(box, spanA[c] + inset, spanA[c] + inset + 1, dx + sy, textX, top, bottom);
 				addSeg(box, spanA[c], spanB[c], textX, textX + textW, top, bottom);
-				addSeg(box, spanB[c] - 1, spanB[c], textX + textW, dx + cellW - sy, top, bottom);
+				addSeg(box, spanB[c] - inset - 1, spanB[c] - inset, textX + textW, dx + cellW - sy, top, bottom);
 			} else {
 				addSeg(box, lc, lc + kl, dx, dx + kl * sy, top, bottom);
 				addSeg(box, lc + kl, spanA[c], dx + kl * sy, dx + gapDst, top, bottom);
@@ -439,7 +439,7 @@ private:
 				continue;
 			const float h = boxes[b].height() * scale;
 			y -= h;
-			if (addStretchedBox(boxes[b], b == 0 ? texts : slots, area, scale, y)) {
+			if (addStretchedBox(boxes[b], b == 0 ? texts : slots, area, scale, y, b == 0 ? 0 : 2)) {
 				// Done
 			} else {
 				const int dw = (int)(boxes[b].width() * scale);
