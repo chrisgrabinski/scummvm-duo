@@ -220,7 +220,7 @@ void ScummEngine::parseEvent(Common::Event event) {
 
 
 	case Common::EVENT_LOWER_SCREEN_TOUCH:
-		handleLowerScreenTouch(event.mouse, event.customType == 1);
+		handleLowerScreenTouch(event.mouse, (int)event.customType);
 		break;
 
 	// We update the mouse position whenever the mouse moves or a click occurs.

@@ -348,11 +348,26 @@ int AndroidGraphicsManager::filterLowerScreenEvent(Common::Event &event) {
 	if (!isInLowerScreen(event.mouse.y))
 		return 0;
 
-	if (event.type != Common::EVENT_LBUTTONDOWN && event.type != Common::EVENT_RBUTTONDOWN)
+	// customType tells the engine what happened: 0 left press, 1 right press, 2 left release, 3 right release
+	switch (event.type) {
+	case Common::EVENT_LBUTTONDOWN:
+		event.customType = 0;
+		break;
+	case Common::EVENT_RBUTTONDOWN:
+		event.customType = 1;
+		break;
+	case Common::EVENT_LBUTTONUP:
+		event.customType = 2;
+		break;
+	case Common::EVENT_RBUTTONUP:
+		event.customType = 3;
+		break;
+	default:
+		// The pointer can be moved over the lower screen, but the engine does not see it there
+		setMousePosition(event.mouse.x, event.mouse.y);
 		return 2;
+	}
 
-	// customType tells the engine which button it was: 0 left, 1 right
-	event.customType = event.type == Common::EVENT_RBUTTONDOWN ? 1 : 0;
 	event.type = Common::EVENT_LOWER_SCREEN_TOUCH;
 	event.mouse = windowToLowerScreen(event.mouse.x, event.mouse.y);
 	return 1;

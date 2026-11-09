@@ -298,7 +298,7 @@ protected:
 	virtual void setCursorFromImg(uint img, uint room, uint imgindex);
 
 	void updateLowerPanel() override;
-	void handleLowerScreenTouch(Common::Point p, bool rightClick) override;
+	void handleLowerScreenTouch(Common::Point p, int what) override;
 	void renderLowerPanel();
 
 	// The Curse of Monkey Island: its inventory chest, made of blast objects, is shown on the lower screen
@@ -309,6 +309,7 @@ protected:
 	Graphics::Surface *_blastDst = nullptr;
 	Common::Array<byte> _blastBuffer;
 	bool _chestOnLower = false;
+	bool _lowerDown = false;       // A press on the lower screen is being held
 	bool _coinFromLower = false;   // The verb coin was opened by a tap on the lower screen
 	int _chestStart = -1;       // First chest entry of the blast object queue, if any
 	int _chestAge = 0;

@@ -709,37 +709,48 @@ void ScummEngine_v6::renderLowerPanel() {
 	image.free();
 }
 
-void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, bool rightClick) {
-	if (_game.id == GID_SAMNMAX && rightClick)
+void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, int what) {
+	// What happened: 0 left press, 1 right press, 2 left release, 3 right release
+	if (_game.id == GID_SAMNMAX && what != 0)
 		return;
 
 	if (_game.id == GID_CMI) {
-		// The chest is the game's own: a tap there is a click at the same position
+		// The chest is the game's own: a press there is a click at the same position
 		const int kModeVar = 312;
+		if (what < 2) {
+			// Only the items and the arrows take it: the rest of the chest is not to click through
+			// to the scene, which is what the game would do with an item in hand
+			bool onItem = false;
+			for (uint i = 0; i < _chestBlasts.size(); i++)
+				onItem = onItem || (_chestBlasts[i].number != 114 && _chestBlasts[i].rect.contains(p));
+			if (!onItem && _scummVars[kModeVar] == 1) {
+				_lowerDown = false;
+				return;
+			}
 
-		// Only the items and the arrows take a tap: the rest of the chest is not to click through
-		// to the scene, which is what the game would do with an item in hand
-		bool onItem = false;
-		for (uint i = 0; i < _chestBlasts.size(); i++)
-			onItem = onItem || (_chestBlasts[i].number != 114 && _chestBlasts[i].rect.contains(p));
-		if (!onItem && _scummVars[kModeVar] == 1)
-			return;
-
-		if (_scummVars[kModeVar] == 1) {
-			// The game takes it as a click in its inventory, for a moment
-			_scummVars[kModeVar] = 3;
-			_chestTapFrames = 12;
+			_lowerDown = true;
+			if (_scummVars[kModeVar] == 1) {
+				// The game takes it as a click in its inventory, for as long as it is held
+				_scummVars[kModeVar] = 3;
+			}
+			if (_scummVars[kModeVar] == 3)
+				_chestTapFrames = 90;
+			_coinFromLower = true; // The verb coin may open, and is then shown there too
+		} else {
+			if (!_lowerDown)
+				return;
+			_lowerDown = false;
+			if (_chestTapFrames > 0)
+				_chestTapFrames = 12;
 		}
-		_coinFromLower = true; // The verb coin may open, and is then shown there too
 
 		Common::EventManager *events = g_system->getEventManager();
 		Common::Event event;
 		event.mouse = p;
 		event.type = Common::EVENT_MOUSEMOVE;
 		events->pushEvent(event);
-		event.type = rightClick ? Common::EVENT_RBUTTONDOWN : Common::EVENT_LBUTTONDOWN;
-		events->pushEvent(event);
-		event.type = rightClick ? Common::EVENT_RBUTTONUP : Common::EVENT_LBUTTONUP;
+		static const Common::EventType types[4] = { Common::EVENT_LBUTTONDOWN, Common::EVENT_RBUTTONDOWN, Common::EVENT_LBUTTONUP, Common::EVENT_RBUTTONUP };
+		event.type = types[what & 3];
 		events->pushEvent(event);
 		return;
 	}
