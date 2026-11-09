@@ -808,6 +808,11 @@ void OpenGLGraphicsManager::updateScreen() {
 		_gameScreen->updateGLTexture();
 	}
 
+	// Like the game screen, before the pipeline is activated, as it may use others
+	if (_snapshot && isStackedInGame()) {
+		_snapshot->updateGLTexture();
+	}
+
 	if (_cursorVisible && _cursor) {
 		_cursor->updateGLTexture();
 	}
@@ -847,7 +852,6 @@ void OpenGLGraphicsManager::updateScreen() {
 
 	// First step: Draw the (virtual) game screen.
 	if (_gameScreen && isStackedInGame() && _snapshot) {
-		_snapshot->updateGLTexture();
 		_pipeline->drawTexture(_snapshot->getGLTexture(), _splitTopRect.left, _splitTopRect.top, _splitTopRect.width(), _splitTopRect.height());
 		_pipeline->drawTexture(_gameScreen->getGLTexture(), _splitBottomRect.left, _splitBottomRect.top, _splitBottomRect.width(), _splitBottomRect.height());
 	} else if (_gameScreen && isSplitScreenInGame()) {
