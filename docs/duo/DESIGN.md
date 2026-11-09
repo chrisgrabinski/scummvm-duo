@@ -52,7 +52,8 @@ The inventory box of Sam & Max is a set of room objects drawn over the scene, so
 the box can never be shown apart by moving rectangles. `OSystem::setScreenSnapshotMode()` lets the
 engine ask the backend to keep a copy of the latest frame (`kSnapshotRolling`) and, while the box
 is open (room object 995), to show the game screen twice, stacked: the copy from just before the
-box opened on top (the scene, frozen) and the live screen below. Taps on the upper screen are
+box opened on top (the scene, frozen) and below it the live screen with everything that is
+unchanged from that copy painted black, so that only the box remains. Taps on the upper screen are
 ignored; taps on the lower one go to the game. The box is still opened and closed with the game's
 own button.
 

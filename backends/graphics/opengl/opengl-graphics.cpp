@@ -102,6 +102,7 @@ OpenGLGraphicsManager::OpenGLGraphicsManager()
 OpenGLGraphicsManager::~OpenGLGraphicsManager() {
 	delete _gameScreen;
 	delete _snapshot;
+	delete _snapshotDiff;
 #if defined(USE_OPENGL_GAME) || defined(USE_OPENGL_SHADERS)
 	delete _renderer3d;
 #endif
@@ -161,6 +162,10 @@ void OpenGLGraphicsManager::setScreenSnapshotMode(OSystem::ScreenSnapshotMode mo
 		delete _snapshot;
 		_snapshot = nullptr;
 	}
+	if (mode != OSystem::kSnapshotFrozenTop) {
+		delete _snapshotDiff;
+		_snapshotDiff = nullptr;
+	}
 
 	const bool stacked = mode == OSystem::kSnapshotFrozenTop && _snapshot;
 	if (stacked != _stackedScreens) {
@@ -181,6 +186,42 @@ void OpenGLGraphicsManager::updateSnapshot() {
 	_snapshot->copyRectToTexture(0, 0, src->w, src->h, src->getPixels(), src->pitch);
 	if (_snapshot->hasPalette())
 		_snapshot->setPalette(0, 256, _gamePalette);
+}
+
+void OpenGLGraphicsManager::updateSnapshotDiff() {
+	const Graphics::Surface *live = _gameScreen->getSurface();
+	const Graphics::Surface *old = _snapshot->getSurface();
+	if (live->format.bytesPerPixel != 1 || live->w != old->w || live->h != old->h)
+		return;
+
+	if (!_snapshotDiff || _snapshotDiff->getWidth() != live->w || _snapshotDiff->getHeight() != live->h) {
+		delete _snapshotDiff;
+		_snapshotDiff = createSurface(live->format, false, false);
+		_snapshotDiff->allocate(live->w, live->h);
+	}
+
+	// What did not change since the snapshot becomes black
+	byte black = 0;
+	for (int i = 0; i < 256; i++) {
+		if (!_gamePalette[i * 3] && !_gamePalette[i * 3 + 1] && !_gamePalette[i * 3 + 2]) {
+			black = i;
+			break;
+		}
+	}
+
+	Common::Array<byte> pixels(live->w * live->h);
+	for (int y = 0; y < live->h; y++) {
+		const byte *a = (const byte *)live->getBasePtr(0, y);
+		const byte *b = (const byte *)old->getBasePtr(0, y);
+		byte *dst = &pixels[y * live->w];
+		for (int x = 0; x < live->w; x++)
+			dst[x] = (a[x] == b[x]) ? black : a[x];
+	}
+
+	_snapshotDiff->copyRectToTexture(0, 0, live->w, live->h, pixels.data(), live->w);
+	if (_snapshotDiff->hasPalette())
+		_snapshotDiff->setPalette(0, 256, _gamePalette);
+	_snapshotDiff->updateGLTexture();
 }
 
 void OpenGLGraphicsManager::setFeatureState(OSystem::Feature f, bool enable) {
@@ -811,6 +852,7 @@ void OpenGLGraphicsManager::updateScreen() {
 	// Like the game screen, before the pipeline is activated, as it may use others
 	if (_snapshot && isStackedInGame()) {
 		_snapshot->updateGLTexture();
+		updateSnapshotDiff();
 	}
 
 	if (_cursorVisible && _cursor) {
@@ -853,7 +895,7 @@ void OpenGLGraphicsManager::updateScreen() {
 	// First step: Draw the (virtual) game screen.
 	if (_gameScreen && isStackedInGame() && _snapshot) {
 		_pipeline->drawTexture(_snapshot->getGLTexture(), _splitTopRect.left, _splitTopRect.top, _splitTopRect.width(), _splitTopRect.height());
-		_pipeline->drawTexture(_gameScreen->getGLTexture(), _splitBottomRect.left, _splitBottomRect.top, _splitBottomRect.width(), _splitBottomRect.height());
+		_pipeline->drawTexture((_snapshotDiff ? _snapshotDiff : _gameScreen)->getGLTexture(), _splitBottomRect.left, _splitBottomRect.top, _splitBottomRect.width(), _splitBottomRect.height());
 	} else if (_gameScreen && isSplitScreenInGame()) {
 		const Texture &tex = _gameScreen->getGLTexture();
 		const Common::Rect topClip(0, 0, _gameScreen->getWidth(), _splitScreenRow);

@@ -369,6 +369,12 @@ protected:
 	bool _snapshotRolling = false;
 	void updateSnapshot();
 
+	/**
+	 * The game screen without what is also in the snapshot, shown below it.
+	 */
+	Surface *_snapshotDiff = nullptr;
+	void updateSnapshotDiff();
+
 #if defined(USE_OPENGL_GAME) || defined(USE_OPENGL_SHADERS)
 	/**
 	 * The rendering helper for 3D games.
