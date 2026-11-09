@@ -712,6 +712,12 @@ void ScummEngine_v6::renderLowerPanel() {
 void ScummEngine_v6::handleLowerScreenTouch(Common::Point p) {
 	if (_game.id == GID_CMI) {
 		// The chest is the game's own: a tap there is a click at the same position
+		const int kModeVar = 312;
+		if (_scummVars[kModeVar] == 1) {
+			// The game takes it as a click in its inventory, for a moment
+			_scummVars[kModeVar] = 3;
+			_chestTapFrames = 12;
+		}
 		Common::EventManager *events = g_system->getEventManager();
 		Common::Event event;
 		event.mouse = p;

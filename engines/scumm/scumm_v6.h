@@ -302,10 +302,17 @@ protected:
 	void renderLowerPanel();
 
 	// The Curse of Monkey Island: its inventory chest, made of blast objects, is shown on the lower screen
-	void drawBlastObjectsToLowerScreen();
+	void drawBlastObjectsToLowerScreen(int first);
+	bool setupComiChest();
 	Graphics::Surface *_blastDst = nullptr;
 	Common::Array<byte> _blastBuffer;
 	bool _chestOnLower = false;
+	int _chestStart = -1;       // First chest entry of the blast object queue, if any
+	int _chestLostFrames = 0;
+	int _chestAge = 0;
+	int _chestTapFrames = 0;    // Frames left of the inventory mode for a tap on the lower screen
+	Common::String _chestSignature;
+	Common::Array<BlastObject> _chestBlasts;
 	void useIm01Cursor(const byte *im, int w, int h);
 	void useBompCursor(const byte *im, int w, int h);
 	void grabCursor(int x, int y, int w, int h);

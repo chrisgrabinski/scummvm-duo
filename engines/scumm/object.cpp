@@ -1790,26 +1790,73 @@ void ScummEngine_v6::drawBlastObjects() {
 	BlastObject *eo;
 	int i;
 
-	if (_game.id == GID_CMI && g_system->hasFeature(OSystem::kFeatureSplitScreen)) {
-		const int kChestObject = 114;
-		bool chest = false;
-		for (i = 0; i < _blastObjectQueuePos; i++)
-			chest = chest || _blastObjectQueue[i].number == kChestObject;
-
-		if (chest != _chestOnLower) {
-			_chestOnLower = chest;
-			g_system->setScreenSnapshotMode(chest ? OSystem::kSnapshotLowerScreen : OSystem::kSnapshotOff);
-		}
-		if (chest) {
-			drawBlastObjectsToLowerScreen();
-			return;
-		}
+	int count = _blastObjectQueuePos;
+	if (_game.id == GID_CMI && g_system->hasFeature(OSystem::kFeatureSplitScreen) && setupComiChest()) {
+		// The chest goes on the lower screen, the rest on the main one
+		drawBlastObjectsToLowerScreen(_chestStart);
+		count = _chestStart;
 	}
 
 	eo = _blastObjectQueue;
-	for (i = 0; i < _blastObjectQueuePos; i++, eo++) {
+	for (i = 0; i < count; i++, eo++) {
 		drawBlastObject(eo);
 	}
+}
+
+// The Curse of Monkey Island: the inventory chest is made of blast objects, which the script 47 queues
+// (the chest, the scroll arrows and one per item). They are shown on the lower screen, always: when the
+// game has not opened it, they are queued here, so that the game can find what a tap there hit.
+bool ScummEngine_v6::setupComiChest() {
+	const int kChestObject = 114, kDrawScript = 47, kModeVar = 312, kScrollVar = 315, kOpenMode = 3;
+
+	_chestStart = -1;
+	for (int i = 0; i < _blastObjectQueuePos; i++) {
+		if (_blastObjectQueue[i].number == kChestObject) {
+			_chestStart = i;
+			break;
+		}
+	}
+
+	if (_chestTapFrames > 0 && --_chestTapFrames == 0 && _scummVars[kModeVar] == kOpenMode)
+		_scummVars[kModeVar] = 1;
+
+	const bool ownChest = _chestStart >= 0;
+	const bool playable = _userPut > 0 && _currentRoom != 0 && (_scummVars[kModeVar] == 1 || _chestTapFrames > 0);
+	if (!ownChest && playable) {
+		Common::String sig = Common::String::format("%d|%d|", getInventoryCount(VAR(VAR_EGO)), _scummVars[kScrollVar]);
+		for (int i = 1; i <= getInventoryCount(VAR(VAR_EGO)); i++)
+			sig += Common::String::format("%d,", findInventory(VAR(VAR_EGO), i));
+
+		if (sig != _chestSignature || ++_chestAge >= 8 || _chestBlasts.empty()) {
+			_chestSignature = sig;
+			_chestAge = 0;
+			const int before = _blastObjectQueuePos;
+			runScript(kDrawScript, false, false, nullptr);
+			_chestBlasts.clear();
+			for (int i = before; i < _blastObjectQueuePos; i++)
+				_chestBlasts.push_back(_blastObjectQueue[i]);
+			_blastObjectQueuePos = before;
+		}
+
+		// Queue them again for the game to find what was clicked, and for us to draw
+		if (_blastObjectQueuePos + (int)_chestBlasts.size() <= ARRAYSIZE(_blastObjectQueue)) {
+			_chestStart = _blastObjectQueuePos;
+			for (uint i = 0; i < _chestBlasts.size(); i++)
+				_blastObjectQueue[_blastObjectQueuePos++] = _chestBlasts[i];
+		}
+	}
+
+	const bool show = _chestStart >= 0;
+	if (show)
+		_chestLostFrames = 0;
+	else if (_chestOnLower && ++_chestLostFrames < 30)
+		return false; // Keep the layout for a moment, for example around a cutscene
+
+	if (show != _chestOnLower) {
+		_chestOnLower = show;
+		g_system->setScreenSnapshotMode(show ? OSystem::kSnapshotLowerScreen : OSystem::kSnapshotOff);
+	}
+	return show;
 }
 
 void ScummEngine_v6::drawBlastObject(BlastObject *eo) {
@@ -1889,7 +1936,7 @@ void ScummEngine_v6::drawBlastObject(BlastObject *eo) {
 		markRectAsDirty(vs->number, bdd.x, bdd.x + bdd.srcwidth, bdd.y, bdd.y + bdd.srcheight);
 }
 
-void ScummEngine_v6::drawBlastObjectsToLowerScreen() {
+void ScummEngine_v6::drawBlastObjectsToLowerScreen(int first) {
 	const int w = _virtscr[kMainVirtScreen].w, h = _virtscr[kMainVirtScreen].h;
 	_blastBuffer.resize(w * h);
 	memset(_blastBuffer.data(), 0, _blastBuffer.size());
@@ -1897,7 +1944,7 @@ void ScummEngine_v6::drawBlastObjectsToLowerScreen() {
 	Graphics::Surface dst;
 	dst.init(w, h, w, _blastBuffer.data(), Graphics::PixelFormat::createFormatCLUT8());
 	_blastDst = &dst;
-	for (int i = 0; i < _blastObjectQueuePos; i++)
+	for (int i = first; i < _blastObjectQueuePos; i++)
 		drawBlastObject(&_blastObjectQueue[i]);
 	_blastDst = nullptr;
 
@@ -1920,9 +1967,10 @@ void ScummEngine_v6::removeBlastObjects() {
 	// has to remain on screen until after runAllScripts().
 	if (_game.version == 8) {
 		if (_blastObjectQueuePos != 0) {
-			for (int i = 0; i < _blastObjectQueuePos; i++) {
+			const int count = (_chestStart >= 0 && _chestOnLower) ? _chestStart : _blastObjectQueuePos;
+			for (int i = 0; i < count; i++) {
 				_blastObjectsRectsToBeRestored[i] = _blastObjectQueue[i].rect;
-				_blastObjectRectsQueue = _blastObjectQueuePos;
+				_blastObjectRectsQueue = count;
 			}
 		}
 
