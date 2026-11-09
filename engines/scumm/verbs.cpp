@@ -816,6 +816,17 @@ void ScummEngine::updateSplitScreenElements() {
 	OSystem::SplitScreenElement e;
 	Common::Rect verbTexts;
 
+	// A conversation replaces the verbs by lines of text, which are wider than the verb box
+	bool dialog = false;
+	if (monkey) {
+		for (int i = 1; i < _numVerbs; i++) {
+			const VerbSlot &v = _verbs[i];
+			if (v.verbid && !v.saveid && v.curmode && v.type != kImageVerbType && v.curRect.top >= vs.topline + 8 &&
+			    v.curRect.right - v.curRect.left > 150)
+				dialog = true;
+		}
+	}
+
 	if (_game.version <= 2) {
 		e.group = 0;
 		e.src = Common::Rect(0, vs.topline, _screenWidth, vs.topline + 8);
@@ -836,6 +847,10 @@ void ScummEngine::updateSplitScreenElements() {
 			} else if (v.type != kImageVerbType && v.curRect.top < vs.topline + 8) {
 				_splitSentenceRect = v.curRect;
 				continue;
+			} else if (monkey && dialog) {
+				if (v.type == kImageVerbType)
+					continue;
+				e.group = 1; // Lines of text, each in its own row
 			} else if (monkey) {
 				// Verbs are in the left 144 columns and the inventory, which is shown whole, at their right
 				if (v.type == kImageVerbType || v.curRect.left >= 144)
@@ -860,7 +875,7 @@ void ScummEngine::updateSplitScreenElements() {
 		}
 	}
 
-	if (monkey && !verbTexts.isEmpty()) {
+	if (monkey && !dialog && !verbTexts.isEmpty()) {
 		const int top = MAX<int>(vs.topline + 8, verbTexts.top - 2);
 		const int bottom = MIN<int>(_screenHeight, verbTexts.bottom + 2);
 		e.group = 4;
