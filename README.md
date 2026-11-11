@@ -4,7 +4,9 @@ An **unofficial** fork of [ScummVM](https://www.scummvm.org/) for Android, aimed
 Android devices such as the Retroid Pocket Duo or the AYN Thor**. It shows classic SCUMM
 adventures the way a dual-screen handheld is meant to be used:
 
-- **Top screen:** only the scene (and the game's text line), scaled to the available space.
+- **Top screen:** only the scene (and the game's text line), scaled to the full height of the
+  available space. Rooms that scroll use the extra width of a 16:9 or wider screen to show more of
+  the room; rooms of one screen are centered.
 - **Bottom screen:** the interface, laid out for touch: the sentence line, the verbs and the
   inventory stacked vertically, with larger text and bigger tap targets.
 
@@ -45,6 +47,10 @@ Known limitations:
   the verbs.
 - Only tested on one device (a Pixel 9 Pro, single screen) and a handful of rooms.
 - On a very tall portrait screen there is empty space between the scene and the interface.
+- Wide rooms (see [docs/duo/DESIGN.md](docs/duo/DESIGN.md)) were compiled but **not run**: no game
+  or device was at hand when they were written. The scene is never cropped, so where the top area
+  is narrower than the 320 pixel scene at full height, it is fitted to the width as before. The
+  Curse of Monkey Island is centered, not widened.
 
 ## Using it
 
@@ -60,6 +66,8 @@ To turn the layout off, add this to `scummvm.ini` (in the app's data folder):
 ```
 dual_screen=false
 ```
+
+To keep the two areas but show rooms at their original width, use `wide_rooms=false`.
 
 Debug builds install as `org.scummvm.scummvm.debug`, so they sit next to the official app.
 Release builds use the official application id; change `applicationId` in

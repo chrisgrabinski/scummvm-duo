@@ -46,6 +46,35 @@ whole (verb box, inventory box), 6 verb texts inside the verb box.
   per frame when they change. Zak and Maniac Mansion report text verbs and inventory entries;
   Fate of Atlantis and Monkey Island (VGA) report the boxes to show whole.
 
+## Wide rooms
+
+The scene is scaled to the full height of the top area. A 320 pixel wide room is then centered, and
+where the area is wider than that, a room that scrolls is shown wider than the original screen:
+
+- `OSystem::getSceneColumns()` tells the engine how many game columns fit across the top area when
+  the scene rows fill its height (`WindowedGraphicsManager`, from the same numbers as the layout).
+- `ScummEngine::updateWideScreen()` asks this when a room starts, after a load and once per frame, and
+  `setScreenWidth()` changes `_screenWidth` to 320 plus the same number of extra columns at each side
+  (`_wideMargin`, whole pairs of strips, at most the room width and 640). The virtual screens, the
+  text surface and the backend screen are created again; the verb screen keeps its content.
+- The scripts keep seeing the 320 pixel screen in the middle. The camera limits they set are moved
+  in by the margin (`getCameraLimits()`), so the same part of the room is shown, and the camera
+  position they read is the one they asked for once the camera is as close as it gets
+  (`scriptCameraX()`). Screen positions from scripts are shifted by the margin
+  (`screenXOffset()`): text that is not above an actor, verbs drawn on the scene, boxes, the mouse
+  position, blast objects and grabbed cursors. Nothing is shifted on the verb screen, so the
+  interface stays in the first 320 columns of the frame, and the backend takes it from there
+  (`interfaceWidth()`).
+- A widened frame keeps the pixel shape of the 320x200 one when aspect ratio correction is on.
+
+It is used by the games with a split layout and by Sam & Max, not with Hercules, CGA or EGA
+rendering, and can be turned off with `wide_rooms=false`. The Curse of Monkey Island is not widened:
+its 640x480 screen is centered at the full height.
+
+What scripts place relative to the edges of the 320 pixel screen stays where it was, for example an
+actor waiting just outside it is now in view. The original pause and save screens are drawn at
+their usual place, at the left of a widened screen.
+
 ## Sam & Max
 
 The inventory box of Sam & Max is a set of room objects drawn over the scene, so the scene and
