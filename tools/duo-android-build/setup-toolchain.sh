@@ -22,5 +22,5 @@ export ANDROID_SDK_ROOT=$ROOT/sdk
 SDKM=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
 
 yes | $SDKM --licenses > /dev/null || true
-$SDKM "platform-tools" "platforms;android-37" "build-tools;37.0.0" "ndk;23.2.8568313"
+$SDKM "platform-tools" "platforms;android-37.0" "build-tools;37.0.0" "ndk;23.2.8568313"
 echo TOOLCHAIN_DONE
