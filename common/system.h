@@ -693,6 +693,23 @@ public:
 	 */
 	virtual void setScreenSnapshotMode(ScreenSnapshotMode mode) {}
 
+	enum SceneLayout {
+		kSceneFullScreen, ///< The game screen fills the window
+		kSceneSplit,      ///< The rows above the split, the plain lower rows below
+		kSceneSplitPanel, ///< The rows above the split, the reported interface elements below
+		kSceneStacked     ///< The game screen in the upper half of the window (kSnapshotLowerScreen)
+	};
+
+	/**
+	 * For games that can show more of a wide scene than their original screen
+	 * does. Returns how many game columns fit across the window when \c rows
+	 * game rows are shown as high as the layout allows, or 0 if this is not
+	 * known. \c baseWidth is the width of the original game screen: the
+	 * interface stays in its first columns, and a wider screen keeps the
+	 * pixel shape of the original one. Needs kFeatureSplitScreen.
+	 */
+	virtual int getSceneColumns(SceneLayout layout, int baseWidth, int rows) { return 0; }
+
 	/**
 	 * Sets what the lower screen shows in kSnapshotLowerScreen mode. The image
 	 * must use the overlay format. Taps on that screen are sent as

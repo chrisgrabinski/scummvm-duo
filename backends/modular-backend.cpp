@@ -60,6 +60,10 @@ void ModularGraphicsBackend::setLowerScreenImage(const Graphics::Surface *image)
 	_graphicsManager->setLowerScreenImage(image);
 }
 
+int ModularGraphicsBackend::getSceneColumns(SceneLayout layout, int baseWidth, int rows) {
+	return _graphicsManager->getSceneColumns(layout, baseWidth, rows);
+}
+
 bool ModularGraphicsBackend::getFeatureState(Feature f) {
 	return _graphicsManager->getFeatureState(f);
 }

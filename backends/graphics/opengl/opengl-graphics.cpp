@@ -931,7 +931,7 @@ void OpenGLGraphicsManager::updateScreen() {
 	} else if (_gameScreen && isSplitScreenInGame()) {
 		const Texture &tex = _gameScreen->getGLTexture();
 		const Common::Rect topClip(0, 0, _gameScreen->getWidth(), _splitScreenRow);
-		const Common::Rect bottomClip(0, _splitScreenRow, _gameScreen->getWidth(), _gameScreen->getHeight());
+		const Common::Rect bottomClip(0, _splitScreenRow, interfaceWidth(), _gameScreen->getHeight());
 		_pipeline->drawTexture(tex, _splitTopRect.left, _splitTopRect.top, _splitTopRect.width(), _splitTopRect.height(), topClip);
 		if (_splitScreenPanel) {
 			const Common::Array<SplitScreenLayout::Cell> &cells = _splitLayout.cells();

@@ -244,7 +244,7 @@ void AndroidGraphicsManager::setSplitScreenElements(const Common::Array<OSystem:
 		_splitScreenPanel = true;
 		recalculateDisplayAreas();
 	} else {
-		_splitLayout.compute(_splitBottomRect, getWidth());
+		_splitLayout.compute(_splitBottomRect, interfaceWidth());
 		_forceRedraw = true;
 	}
 }

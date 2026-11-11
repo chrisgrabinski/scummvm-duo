@@ -45,6 +45,7 @@ public:
 	virtual void setSplitScreenElements(const Common::Array<OSystem::SplitScreenElement> &elements) {}
 	virtual void setScreenSnapshotMode(OSystem::ScreenSnapshotMode mode) {}
 	virtual void setLowerScreenImage(const Graphics::Surface *image) {}
+	virtual int getSceneColumns(OSystem::SceneLayout layout, int baseWidth, int rows) { return 0; }
 
 	virtual const OSystem::GraphicsMode *getSupportedGraphicsModes() const {
 		static const OSystem::GraphicsMode noGraphicsModes[] = {{"NONE", "Normal", 0}, {nullptr, nullptr, 0 }};

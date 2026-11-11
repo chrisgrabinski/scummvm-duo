@@ -241,7 +241,8 @@ protected:
 			const Common::Rect &r = top ? _splitTopRect : _splitBottomRect;
 			const int rowStart = top ? 0 : _splitScreenRow;
 			const int rows = top ? _splitScreenRow : getHeight() - _splitScreenRow;
-			const int wx = r.left + (x * r.width() + getWidth() / 2) / getWidth();
+			const int cols = top ? getWidth() : interfaceWidth();
+			const int wx = r.left + (x * r.width() + cols / 2) / cols;
 			const int wy = r.top + ((y - rowStart) * r.height() + rows / 2) / rows;
 			return Common::Point(CLIP<int>(wx, r.left, r.right - 1), CLIP<int>(wy, r.top, r.bottom - 1));
 		}
@@ -308,11 +309,12 @@ protected:
 			const Common::Rect &r = top ? _splitTopRect : _splitBottomRect;
 			const int rowStart = top ? 0 : _splitScreenRow;
 			const int rows = top ? _splitScreenRow : getHeight() - _splitScreenRow;
+			const int cols = top ? getWidth() : interfaceWidth();
 			x = CLIP<int>(x, r.left, r.right - 1);
 			y = CLIP<int>(y, r.top, r.bottom - 1);
-			const int vx = ((x - r.left) * getWidth()) / r.width();
+			const int vx = ((x - r.left) * cols) / r.width();
 			const int vy = rowStart + ((y - r.top) * rows) / r.height();
-			return Common::Point(CLIP<int>(vx, 0, getWidth() - 1),
+			return Common::Point(CLIP<int>(vx, 0, cols - 1),
 			                     CLIP<int>(vy, rowStart, rowStart + rows - 1));
 		}
 
@@ -365,6 +367,11 @@ protected:
 			return intToFrac(4) / 3;
 		}
 
+		// A widened screen keeps the pixel shape of the original one
+		if (interfaceWidth() != getWidth() && wideSceneNeedsAspectRatioCorrection(getHeight())) {
+			return intToFrac(4) * getWidth() / (3 * _sceneBaseWidth);
+		}
+
 		return intToFrac(getWidth()) / getHeight();
 	}
 
@@ -413,16 +420,7 @@ protected:
 			return;
 		}
 
-		// Compute a safe area rectangle out of the insets
-		Insets insets;
-		if (_ignoreGameSafeArea) {
-			insets = {0, 0, 0, 0};
-		} else {
-			insets = getSafeAreaInsets();
-		}
-		Common::Rect safeArea(insets.left, insets.top,
-				_windowWidth - insets.right,
-				_windowHeight - insets.bottom);
+		const Common::Rect safeArea = getGameSafeArea();
 
 		// Create a game draw rect using the safe are dimensions
 		populateDisplayAreaDrawRect(getDesiredGameAspectRatio(),
@@ -433,9 +431,12 @@ protected:
 			const int half = safeArea.height() / 2;
 			const Common::Rect upper(safeArea.left, safeArea.top, safeArea.right, safeArea.top + half);
 			const Common::Rect lower(safeArea.left, safeArea.top + half, safeArea.right, safeArea.bottom);
-			populateDisplayAreaDrawRect(getDesiredGameAspectRatio(), getWidth() * getGameRenderScale(),
+			// An image of its own on the lower screen has the size of the original screen
+			const frac_t aspect = getDesiredGameAspectRatio();
+			const int lowerWidth = _stackedLowerPanel ? interfaceWidth() : getWidth();
+			populateDisplayAreaDrawRect(aspect, getWidth() * getGameRenderScale(),
 					getHeight() * getGameRenderScale(), upper, _splitTopRect);
-			populateDisplayAreaDrawRect(getDesiredGameAspectRatio(), getWidth() * getGameRenderScale(),
+			populateDisplayAreaDrawRect(aspect * lowerWidth / getWidth(), lowerWidth * getGameRenderScale(),
 					getHeight() * getGameRenderScale(), lower, _splitBottomRect);
 			_gameDrawRect = _splitTopRect;
 			_gameDrawRect.extend(_splitBottomRect);
@@ -600,7 +601,7 @@ protected:
 		const Common::Rect &r = _splitBottomRect;
 		x = CLIP<int>(x, r.left, r.right - 1);
 		y = CLIP<int>(y, r.top, r.bottom - 1);
-		return Common::Point(CLIP<int>((x - r.left) * getWidth() / r.width(), 0, getWidth() - 1),
+		return Common::Point(CLIP<int>((x - r.left) * interfaceWidth() / r.width(), 0, interfaceWidth() - 1),
 		                     CLIP<int>((y - r.top) * getHeight() / r.height(), 0, getHeight() - 1));
 	}
 
@@ -616,18 +617,49 @@ protected:
 	 */
 	static const int kSplitScreenMaxStretchPercent = 150;
 
+	/**
+	 * Width of the original game screen while the game shows a wider one
+	 * (see OSystem::getSceneColumns()), else 0.
+	 */
+	int _sceneBaseWidth = 0;
+
+	/**
+	 * The interface is in the first columns of a widened game screen.
+	 */
+	int interfaceWidth() const {
+		return (_sceneBaseWidth > 0 && _sceneBaseWidth < getWidth()) ? _sceneBaseWidth : getWidth();
+	}
+
+	bool wideSceneNeedsAspectRatioCorrection(int rows) const {
+		return _sceneBaseWidth == 320 && rows == 200 && getFeatureState(OSystem::kFeatureAspectRatioCorrection);
+	}
+
+	Common::Rect getGameSafeArea() const {
+		Insets insets;
+		if (_ignoreGameSafeArea) {
+			insets = {0, 0, 0, 0};
+		} else {
+			insets = getSafeAreaInsets();
+		}
+		return Common::Rect(insets.left, insets.top,
+				_windowWidth - insets.right,
+				_windowHeight - insets.bottom);
+	}
+
+	int splitBottomHeight(const Common::Rect &safeArea, bool panel, int bottomRows) const {
+		const int areaW = safeArea.width(), areaH = safeArea.height();
+		if (panel)
+			return areaH * (areaW > areaH ? 50 : 40) / 100;
+
+		const int bottomH = (int)((int64)bottomRows * areaW * kSplitScreenMaxStretchPercent / (interfaceWidth() * 100));
+		return CLIP<int>(bottomH, 1, areaH / 2);
+	}
+
 	void populateSplitScreenRects(const Common::Rect &safeArea) {
 		const int gameW = getWidth(), gameH = getHeight();
-		const int bottomRows = gameH - _splitScreenRow;
 		const int areaW = safeArea.width(), areaH = safeArea.height();
 
-		int bottomH;
-		if (_splitScreenPanel) {
-			bottomH = areaH * (areaW > areaH ? 50 : 40) / 100;
-		} else {
-			bottomH = (int)((int64)bottomRows * areaW * kSplitScreenMaxStretchPercent / (gameW * 100));
-			bottomH = CLIP<int>(bottomH, 1, areaH / 2);
-		}
+		const int bottomH = splitBottomHeight(safeArea, _splitScreenPanel, gameH - _splitScreenRow);
 		const int topH = areaH - bottomH;
 
 		// Scene: keep its aspect ratio and center it in the remaining space
@@ -643,8 +675,32 @@ protected:
 
 		_splitBottomRect = Common::Rect(safeArea.left, safeArea.bottom - bottomH, safeArea.right, safeArea.bottom);
 		if (_splitScreenPanel)
-			_splitLayout.compute(_splitBottomRect, gameW);
+			_splitLayout.compute(_splitBottomRect, interfaceWidth());
 	}
+
+public:
+	int getSceneColumns(OSystem::SceneLayout layout, int baseWidth, int rows) override {
+		_sceneBaseWidth = baseWidth;
+		if (_windowHeight == 0 || baseWidth <= 0 || rows <= 0 || _rotationMode != Common::kRotationNormal)
+			return 0;
+
+		const Common::Rect safeArea = getGameSafeArea();
+		int64 width = (int64)safeArea.width() * rows;
+		int height = safeArea.height();
+		if (layout == OSystem::kSceneSplit || layout == OSystem::kSceneSplitPanel) {
+			height -= splitBottomHeight(safeArea, layout == OSystem::kSceneSplitPanel, getHeight() - rows);
+		} else {
+			if (layout == OSystem::kSceneStacked)
+				height /= 2;
+			if (wideSceneNeedsAspectRatioCorrection(rows)) {
+				width *= 6;
+				height *= 5;
+			}
+		}
+		return (height > 0) ? (int)(width / height) : 0;
+	}
+
+protected:
 
 	/**
 	 * Whether the overlay (i.e. launcher, including the out-of-game launcher)

@@ -59,6 +59,7 @@ public:
 	void setSplitScreenElements(const Common::Array<SplitScreenElement> &elements) override;
 	void setScreenSnapshotMode(ScreenSnapshotMode mode) override;
 	void setLowerScreenImage(const Graphics::Surface *image) override;
+	int getSceneColumns(SceneLayout layout, int baseWidth, int rows) override;
 
 	//@}
 
