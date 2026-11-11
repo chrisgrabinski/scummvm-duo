@@ -1783,14 +1783,14 @@ void ScummEngine_v6::o6_roomOps() {
 	case SO_ROOM_SCROLL:
 		b = pop();
 		a = pop();
-		if (a < (_screenWidth / 2))
-			a = (_screenWidth / 2);
-		if (b < (_screenWidth / 2))
-			b = (_screenWidth / 2);
-		if (a > _roomWidth - (_screenWidth / 2))
-			a = _roomWidth - (_screenWidth / 2);
-		if (b > _roomWidth - (_screenWidth / 2))
-			b = _roomWidth - (_screenWidth / 2);
+		if (a < (logicalScreenWidth() / 2))
+			a = (logicalScreenWidth() / 2);
+		if (b < (logicalScreenWidth() / 2))
+			b = (logicalScreenWidth() / 2);
+		if (a > _roomWidth - (logicalScreenWidth() / 2))
+			a = _roomWidth - (logicalScreenWidth() / 2);
+		if (b > _roomWidth - (logicalScreenWidth() / 2))
+			b = _roomWidth - (logicalScreenWidth() / 2);
 		VAR(VAR_CAMERA_MIN_X) = a;
 		VAR(VAR_CAMERA_MAX_X) = b;
 		break;
@@ -2344,7 +2344,7 @@ void ScummEngine_v6::o6_drawBox() {
 	x2 = pop();
 	y = pop();
 	x = pop();
-	drawBox(x, y, x2, y2, color);
+	drawScriptBox(x, y, x2, y2, color);
 }
 
 void ScummEngine_v6::o6_wait() {
@@ -3348,6 +3348,7 @@ void ScummEngine_v6::o6_getPixel() {
 	}
 
 	VirtScreen *vs = findVirtScreen(y);
+	x += screenXOffset(y);
 
 	if (vs == nullptr || x > _screenWidth - 1 || x < 0) {
 		push(-1);

@@ -1766,7 +1766,7 @@ void ScummEngine_v6::enqueueObject(int objectNumber, int objectX, int objectY, i
 
 	eo = &_blastObjectQueue[_blastObjectQueuePos++];
 	eo->number = objectNumber;
-	eo->rect.left = objectX;
+	eo->rect.left = objectX + screenXOffset(objectY);
 	eo->rect.top = objectY + _screenTop;
 	if (objectWidth == 0) {
 		eo->rect.right = eo->rect.left + _objs[idx].width;

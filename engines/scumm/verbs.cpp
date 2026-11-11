@@ -645,7 +645,7 @@ void ScummEngine_v6::renderLowerPanel() {
 	}
 
 	VirtScreen &vs = _virtscr[kMainVirtScreen];
-	const int w = vs.w, h = vs.h;
+	const int w = logicalScreenWidth(), h = vs.h;
 
 	// Draw with the regular object code, into a buffer in place of the main screen
 	byte *maskBuf = getResourceAddress(rtBuffer, 9);
@@ -676,7 +676,7 @@ void ScummEngine_v6::renderLowerPanel() {
 			continue;
 		ObjectData &od = _objs[idx];
 		const int savedState = getState(icons[i].obj);
-		od.x_pos = _screenStartStrip * 8 + icons[i].x * 8;
+		od.x_pos = _screenStartStrip * 8 + _wideMargin + icons[i].x * 8;
 		od.y_pos = icons[i].y * 8;
 		// Without the "ignore boxes" class, the object does not also write into the masks
 		const bool savedClass = getClass(icons[i].obj, kObjectClassIgnoreBoxes);
@@ -702,7 +702,7 @@ void ScummEngine_v6::renderLowerPanel() {
 	Graphics::Surface image;
 	image.create(w, h, format);
 	for (int y = 0; y < h; y++) {
-		const byte *src = &buffer[y * vs.pitch + vs.xstart];
+		const byte *src = &buffer[y * vs.pitch + vs.xstart + _wideMargin];
 		uint32 *dst = (uint32 *)image.getBasePtr(0, y);
 		for (int x = 0; x < w; x++)
 			dst[x] = format.ARGBToColor(255, _currentPalette[src[x] * 3], _currentPalette[src[x] * 3 + 1], _currentPalette[src[x] * 3 + 2]);
@@ -805,11 +805,11 @@ void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, int what) {
 void ScummEngine::updateSplitScreenElements() {
 	if (!g_system->getFeatureState(OSystem::kFeatureSplitScreen))
 		return;
-	if (_game.version == 0 || (_game.version > 2 && _game.id != GID_INDY4 && _game.id != GID_MONKEY && _game.id != GID_MONKEY2 && _game.id != GID_TENTACLE))
+	if (!usesSplitScreenPanel())
 		return;
 	// Monkey Island (VGA), Monkey Island 2 and Day of the Tentacle have the verbs at the left and the inventory at their right
 	const bool monkey = _game.id == GID_MONKEY || _game.id == GID_MONKEY2 || _game.id == GID_TENTACLE;
-	const int inventoryRight = _game.id == GID_TENTACLE ? 280 : _screenWidth;
+	const int inventoryRight = _game.id == GID_TENTACLE ? 280 : logicalScreenWidth();
 
 	const VirtScreen &vs = _virtscr[kVerbVirtScreen];
 	Common::Array<OSystem::SplitScreenElement> elements;
@@ -831,7 +831,7 @@ void ScummEngine::updateSplitScreenElements() {
 
 	if (_game.version <= 2) {
 		e.group = 0;
-		e.src = Common::Rect(0, vs.topline, _screenWidth, vs.topline + 8);
+		e.src = Common::Rect(0, vs.topline, logicalScreenWidth(), vs.topline + 8);
 		elements.push_back(e);
 	}
 
@@ -905,7 +905,7 @@ void ScummEngine::updateSplitScreenElements() {
 
 	if (_game.version > 2 && !dialog) {
 		if (_splitSentenceRect.isEmpty())
-			_splitSentenceRect = Common::Rect(0, vs.topline, _screenWidth, vs.topline + 8);
+			_splitSentenceRect = Common::Rect(0, vs.topline, logicalScreenWidth(), vs.topline + 8);
 		e.group = 0;
 		e.src = _splitSentenceRect;
 		elements.push_back(e);
@@ -1416,6 +1416,8 @@ int ScummEngine::findVerbAtPos(int x, int y) const {
 	if (!_numVerbs)
 		return 0;
 
+	x -= screenXOffset(y);
+
 	VerbSlot *vs;
 	int i = _numVerbs - 1;
 
@@ -1550,7 +1552,7 @@ void ScummEngine::drawVerb(int verb, int mode, Common::TextToSpeechManager::Acti
 		_string[4].charset = vs->charset_nr;
 		_string[4].xpos = isRtl ? vs->origLeft : vs->curRect.left + pixelXOffset;
 		_string[4].ypos = vs->curRect.top + pixelYOffset;
-		_string[4].right = _screenWidth - 1 + pixelXOffset;
+		_string[4].right = logicalScreenWidth() - 1 + pixelXOffset;
 		_string[4].center = vs->center;
 
 		if (vs->curmode == 2)
@@ -1587,9 +1589,11 @@ void ScummEngine::drawVerb(int verb, int mode, Common::TextToSpeechManager::Acti
 		drawString(4, msg, ttsAction);
 		_charset->_center = tmp;
 
+		// The verb keeps its place on the original screen
+		const int offset = screenXOffset(_string[4].ypos + _screenTop);
 		if (isRtl)
-			vs->curRect.left = _charset->_str.left;
-		vs->curRect.right = pixelXOffset + ((_game.version <= 2) ? MIN<int>(vs->curRect.left + (getResourceSize(rtVerb, verb) - 1) * 8, _screenWidth) : _charset->_str.right);
+			vs->curRect.left = _charset->_str.left - offset;
+		vs->curRect.right = pixelXOffset + ((_game.version <= 2) ? MIN<int>(vs->curRect.left + (getResourceSize(rtVerb, verb) - 1) * 8, logicalScreenWidth()) : _charset->_str.right - offset);
 		vs->curRect.bottom = _charset->_str.bottom + pixelYOffset;
 		vs->oldRect = _charset->_str;
 		_charset->_str.left = _charset->_str.right;
@@ -1644,7 +1648,8 @@ void ScummEngine::drawVerbBitmap(int verb, int x, int y) {
 	twobufs = vs->hasTwoBuffers;
 	vs->hasTwoBuffers = false;
 
-	xstrip = x / 8;
+	const int offset = screenXOffset(y);
+	xstrip = (x + offset) / 8;
 	ydiff = y - vs->topline;
 
 	if (_game.version == 4)
@@ -1696,6 +1701,7 @@ void ScummEngine::drawVerbBitmap(int verb, int x, int y) {
 	vst->curRect.right = vst->curRect.left + imgw * 8;
 	vst->curRect.bottom = vst->curRect.top + imgh * 8;
 	vst->oldRect = vst->curRect;
+	vst->oldRect.translate(offset, 0);
 
 	_gdi->enableZBuffer();
 

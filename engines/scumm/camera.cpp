@@ -37,20 +37,49 @@ void ScummEngine::setCameraAtEx(int at) {
 	}
 }
 
+void ScummEngine::getCameraLimits(int &minX, int &maxX) const {
+	minX = VAR(VAR_CAMERA_MIN_X);
+	maxX = VAR(VAR_CAMERA_MAX_X);
+	if (!_wideMargin)
+		return;
+
+	// The scripts give the limits for the original screen: show the same part of the room
+	minX = MAX(minX + _wideMargin, _screenWidth / 2);
+	maxX = MIN(maxX - _wideMargin, _roomWidth - _screenWidth / 2);
+	if (minX > maxX)
+		minX = maxX = CLIP(((int)VAR(VAR_CAMERA_MIN_X) + (int)VAR(VAR_CAMERA_MAX_X)) / 2, _screenWidth / 2, _roomWidth - _screenWidth / 2) & ~7;
+}
+
+int ScummEngine::scriptCameraX() const {
+	// A script that sent the camera to a place the widened screen cannot reach
+	// may wait for it to get there: tell it that it did, once it is as close as it gets
+	if (_wideMargin && _wideCameraWanted >= 0 && camera._mode != kFollowActorCameraMode && VAR_CAMERA_MIN_X != 0xFF) {
+		int minX, maxX;
+		getCameraLimits(minX, maxX);
+		if ((camera._cur.x & ~7) == (CLIP(_wideCameraWanted, minX, maxX) & ~7))
+			return (camera._cur.x & 7) ? _wideCameraWanted : (_wideCameraWanted & ~7);
+	}
+	return camera._cur.x;
+}
+
 void ScummEngine::setCameraAt(int pos_x, int pos_y) {
 	if (camera._mode != kFollowActorCameraMode || ABS(pos_x - camera._cur.x) > (_screenWidth / 2)) {
 		camera._cur.x = pos_x;
 	}
 	camera._dest.x = pos_x;
 
-	if (VAR_CAMERA_MIN_X != 0xFF && camera._cur.x < VAR(VAR_CAMERA_MIN_X))
-		camera._cur.x = (short) VAR(VAR_CAMERA_MIN_X);
-
-	if (VAR_CAMERA_MAX_X != 0xFF && camera._cur.x > VAR(VAR_CAMERA_MAX_X))
-		camera._cur.x = (short) VAR(VAR_CAMERA_MAX_X);
+	if (VAR_CAMERA_MIN_X != 0xFF) {
+		int minX, maxX;
+		getCameraLimits(minX, maxX);
+		_wideCameraWanted = CLIP<int>(pos_x, VAR(VAR_CAMERA_MIN_X), MAX<int>(VAR(VAR_CAMERA_MIN_X), VAR(VAR_CAMERA_MAX_X)));
+		if (camera._cur.x < minX)
+			camera._cur.x = (short)minX;
+		if (camera._cur.x > maxX)
+			camera._cur.x = (short)maxX;
+	}
 
 	if (VAR_SCROLL_SCRIPT != 0xFF && VAR(VAR_SCROLL_SCRIPT)) {
-		VAR(VAR_CAMERA_POS_X) = camera._cur.x;
+		VAR(VAR_CAMERA_POS_X) = scriptCameraX();
 		runScript(VAR(VAR_SCROLL_SCRIPT), 0, 0, nullptr);
 	}
 
@@ -73,7 +102,7 @@ void ScummEngine::setCameraFollows(Actor *a, bool setCamera) {
 		setCameraAt(camera._cur.x, 0);
 	}
 
-	t = a->getPos().x / 8 - _screenStartStrip;
+	t = a->getPos().x / 8 - _screenStartStrip - _wideMargin / 8;
 
 	if (t < camera._leftTrigger || t > camera._rightTrigger || setCamera == true)
 		setCameraAt(a->getPos().x, 0);
@@ -98,18 +127,22 @@ void ScummEngine::moveCamera() {
 
 	camera._cur.x &= 0xFFF8;
 
-	if (VAR_CAMERA_MIN_X != 0xFF && camera._cur.x < VAR(VAR_CAMERA_MIN_X)) {
+	int minX = 0, maxX = 0;
+	if (VAR_CAMERA_MIN_X != 0xFF)
+		getCameraLimits(minX, maxX);
+
+	if (VAR_CAMERA_MIN_X != 0xFF && camera._cur.x < minX) {
 		if (snapToX)
-			camera._cur.x = (short) VAR(VAR_CAMERA_MIN_X);
+			camera._cur.x = (short)minX;
 		else
 			camera._cur.x += 8;
 		cameraMoved();
 		return;
 	}
 
-	if (VAR_CAMERA_MAX_X != 0xFF && camera._cur.x > VAR(VAR_CAMERA_MAX_X)) {
+	if (VAR_CAMERA_MAX_X != 0xFF && camera._cur.x > maxX) {
 		if (snapToX)
-			camera._cur.x = (short) VAR(VAR_CAMERA_MAX_X);
+			camera._cur.x = (short)maxX;
 		else
 			camera._cur.x -= 8;
 		cameraMoved();
@@ -120,7 +153,7 @@ void ScummEngine::moveCamera() {
 		a = derefActor(camera._follows, "moveCamera");
 
 		int actorx = a->getPos().x;
-		t = actorx / 8 - _screenStartStrip;
+		t = actorx / 8 - _screenStartStrip - _wideMargin / 8;
 
 		if (t < camera._leftTrigger || t > camera._rightTrigger) {
 			if (snapToX) {
@@ -138,11 +171,11 @@ void ScummEngine::moveCamera() {
 		camera._dest.x = a->getPos().x;
 	}
 
-	if (VAR_CAMERA_MIN_X != 0xFF && camera._dest.x < VAR(VAR_CAMERA_MIN_X))
-		camera._dest.x = (short) VAR(VAR_CAMERA_MIN_X);
+	if (VAR_CAMERA_MIN_X != 0xFF && camera._dest.x < minX)
+		camera._dest.x = (short)minX;
 
-	if (VAR_CAMERA_MAX_X != 0xFF && camera._dest.x > VAR(VAR_CAMERA_MAX_X))
-		camera._dest.x = (short) VAR(VAR_CAMERA_MAX_X);
+	if (VAR_CAMERA_MAX_X != 0xFF && camera._dest.x > maxX)
+		camera._dest.x = (short)maxX;
 
 	if (snapToX) {
 		camera._cur.x = camera._dest.x;
@@ -161,7 +194,7 @@ void ScummEngine::moveCamera() {
 	cameraMoved();
 
 	if (VAR_SCROLL_SCRIPT != 0xFF && VAR(VAR_SCROLL_SCRIPT) && pos != camera._cur.x) {
-		VAR(VAR_CAMERA_POS_X) = camera._cur.x;
+		VAR(VAR_CAMERA_POS_X) = scriptCameraX();
 		runScript(VAR(VAR_SCROLL_SCRIPT), 0, 0, nullptr);
 	}
 }
@@ -193,6 +226,8 @@ void ScummEngine::cameraMoved() {
 }
 
 void ScummEngine::panCameraTo(int x, int y) {
+	if (VAR_CAMERA_MIN_X != 0xFF)
+		_wideCameraWanted = CLIP<int>(x, VAR(VAR_CAMERA_MIN_X), MAX<int>(VAR(VAR_CAMERA_MIN_X), VAR(VAR_CAMERA_MAX_X)));
 	camera._dest.x = x;
 	camera._mode = kPanningCameraMode;
 	camera._movingToActor = false;

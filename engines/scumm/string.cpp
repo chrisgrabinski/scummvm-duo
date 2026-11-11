@@ -1030,8 +1030,43 @@ void ScummEngine_v2::drawSentence() {
 	drawString(2, (byte *)string);
 }
 
+void ScummEngine::getStringXOffsets(int slot, int &left, int &right) {
+	left = right = 0;
+	if (!_wideMargin)
+		return;
+
+	const int offset = screenXOffset(_string[slot].ypos + _screenTop);
+	left = right = offset;
+	// Text above an actor is already where the actor is, and may use the whole width
+	if (slot == 0 && _string[0].overhead && getTalkingActor() != 0xFF && derefActorSafe(getTalkingActor(), "getStringXOffsets")) {
+		left = 0;
+		if (_string[0].right >= logicalScreenWidth() - 1)
+			right = 2 * offset;
+	}
+}
+
+ScummEngine::WideString::WideString(ScummEngine *vm, int slot) : _vm(vm), _slot(slot), _left(0), _right(0) {
+	if (slot < 0)
+		return;
+	_vm->getStringXOffsets(slot, _left, _right);
+	_vm->_string[slot].xpos += _left;
+	_vm->_string[slot].right += _right;
+	if (slot == 0)
+		_vm->_wideDialogShifted = true;
+}
+
+ScummEngine::WideString::~WideString() {
+	if (_slot < 0)
+		return;
+	_vm->_string[_slot].xpos -= _left;
+	_vm->_string[_slot].right -= _right;
+	if (_slot == 0)
+		_vm->_wideDialogShifted = false;
+}
+
 void ScummEngine::displayDialog() {
 	Actor *a;
+	WideString wide(this, 0);
 	if (_game.heversion >= 60 && _haveMsg == 3) {
 		stopTalk();
 		return;
@@ -1362,6 +1397,9 @@ void ScummEngine::drawString(int a, const byte *msg, Common::TextToSpeechManager
 
 	// drawString is not used in SCUMM v7 and v8
 	assert(_game.version < 7);
+
+	// Texts of the scripts and verbs; the others are placed by the interpreter itself
+	WideString wide(this, (a == 1 || a == 4) ? a : -1);
 
 	convertMessageToString(msg, buf, sizeof(buf));
 

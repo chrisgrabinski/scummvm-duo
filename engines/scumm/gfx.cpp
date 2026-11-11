@@ -21,6 +21,7 @@
 
 #include "common/config-manager.h"
 #include "common/system.h"
+#include "engines/util.h"
 #include "scumm/actor.h"
 #include "scumm/charset.h"
 #ifdef ENABLE_HE
@@ -412,6 +413,104 @@ void ScummEngine::updateSplitScreen() {
 	g_system->setFeatureState(OSystem::kFeatureSplitScreen, split);
 	if (!split)
 		_splitScreenElementsSent = false;
+}
+
+bool ScummEngine::usesSplitScreenPanel() const {
+	return _game.version != 0 && (_game.version <= 2 || _game.id == GID_INDY4 || _game.id == GID_MONKEY ||
+	                              _game.id == GID_MONKEY2 || _game.id == GID_TENTACLE);
+}
+
+int ScummEngine::screenXOffset(int y) const {
+	// The verb screen keeps the interface in its first columns
+	const VirtScreen &verbs = _virtscr[kVerbVirtScreen];
+	return (verbs.h > 0 && y >= verbs.topline) ? 0 : _wideMargin;
+}
+
+void ScummEngine::updateWideScreen() {
+	if (_wideRooms < 0) {
+		const bool plain = _renderMode != Common::kRenderHercA && _renderMode != Common::kRenderHercG &&
+		                   _renderMode != Common::kRenderCGA && _renderMode != Common::kRenderCGAComp &&
+		                   _renderMode != Common::kRenderCGA_BW && !_enableEGADithering;
+		_wideRooms = _game.version <= 6 && _game.heversion == 0 && !_macScreen &&
+		             _game.platform != Common::kPlatformFMTowns && _game.platform != Common::kPlatformNES &&
+		             _screenWidth == 320 && _screenHeight == 200 && _bytesPerPixel == 1 &&
+		             _outputPixelFormat.bytesPerPixel == 1 && _textSurfaceMultiplier == 1 && plain &&
+		             g_system->hasFeature(OSystem::kFeatureSplitScreen) &&
+		             (!ConfMan.hasKey("dual_screen") || ConfMan.getBool("dual_screen")) &&
+		             (!ConfMan.hasKey("wide_rooms") || ConfMan.getBool("wide_rooms"));
+	}
+	if (!_wideRooms)
+		return;
+
+	// At most 80 strips can be tracked (see VirtScreen::tdirty)
+	const int kMaxWidth = 640;
+	const int base = logicalScreenWidth();
+	int width = base;
+
+	if (_currentRoom != 0 && _roomWidth > base) {
+		const VirtScreen &verbs = _virtscr[kVerbVirtScreen];
+		OSystem::SceneLayout layout = OSystem::kSceneFullScreen;
+		int rows = _screenHeight;
+		if (_game.id == GID_SAMNMAX) {
+			layout = OSystem::kSceneStacked;
+		} else if (verbs.h > 0 && g_system->getFeatureState(OSystem::kFeatureSplitScreen)) {
+			layout = usesSplitScreenPanel() ? OSystem::kSceneSplitPanel : OSystem::kSceneSplit;
+			rows = verbs.topline;
+		}
+
+		const int columns = MIN<int>(MIN<int>(g_system->getSceneColumns(layout, base, rows), _roomWidth), kMaxWidth);
+		// Whole strips, and the same number at each side
+		if (columns > base)
+			width += (columns - base) / 16 * 16;
+	}
+
+	if (width != _screenWidth)
+		setScreenWidth(width);
+}
+
+void ScummEngine::setScreenWidth(int width) {
+	const int base = logicalScreenWidth();
+	const int oldMargin = _wideMargin;
+
+	// The interface and the text line stay as they are
+	Common::Array<byte> saved[2];
+	int savedPitch[2];
+	const VirtScreenNumber keep[2] = { kVerbVirtScreen, kTextVirtScreen };
+	for (int i = 0; i < 2; i++) {
+		const VirtScreen &vs = _virtscr[keep[i]];
+		savedPitch[i] = vs.pitch;
+		if (vs.h > 0)
+			saved[i] = Common::Array<byte>((const byte *)vs.getBasePtr(0, 0), vs.pitch * vs.h);
+	}
+
+	_screenWidth = width;
+	_wideMargin = (width - base) / 2;
+
+	_textSurface.free();
+	_textSurface.create(_screenWidth, _screenHeight, Graphics::PixelFormat::createFormatCLUT8());
+	clearTextSurface();
+	free(_compositeBuf);
+	_compositeBuf = (byte *)malloc(_screenWidth * _screenHeight);
+
+	initGraphics(_screenWidth, _screenHeight);
+	initScreens(_screenB, _screenH);
+
+	for (int i = 0; i < 2; i++) {
+		VirtScreen &vs = _virtscr[keep[i]];
+		if (saved[i].size() != (uint)(savedPitch[i] * vs.h))
+			continue;
+		const int from = (keep[i] == kVerbVirtScreen) ? 0 : oldMargin;
+		const int to = (keep[i] == kVerbVirtScreen) ? 0 : _wideMargin;
+		for (int y = 0; y < vs.h; y++)
+			memcpy(vs.getBasePtr(to, y), &saved[i][y * savedPitch[i] + from], base);
+		vs.setDirtyRange(0, vs.h);
+	}
+
+	if (_currentRoom != 0 && _roomResource != 0)
+		initBGBuffers(_roomHeight);
+
+	cameraMoved();
+	_fullRedraw = true;
 }
 
 void ScummEngine::initVirtScreen(VirtScreenNumber slot, int top, int width, int height, bool twobufs,
@@ -1296,6 +1395,11 @@ void ScummEngine::restoreBackground(Common::Rect rect, byte backColor) {
 
 void ScummEngine::restoreCharsetBg() {
 	_nextLeft = _string[0].xpos;
+	if (!_wideDialogShifted) {
+		int left, right;
+		getStringXOffsets(0, left, right);
+		_nextLeft += left;
+	}
 	_nextTop = _string[0].ypos + _screenTop;
 
 	if (_charset->_hasMask || _postGUICharMask) {
@@ -1434,6 +1538,15 @@ static void clear8Col(byte *dst, int dstPitch, int height, uint8 bitDepth) {
 			memset(dst, 0, 8 * bitDepth);
 		dst += dstPitch;
 	} while (--height);
+}
+
+void ScummEngine::drawScriptBox(int x, int y, int x2, int y2, int color) {
+	// A box across the original screen goes across the widened one
+	const int offset = screenXOffset(y);
+	x2 += (x2 >= logicalScreenWidth() - 1) ? 2 * offset : offset;
+	if (x > 0)
+		x += offset;
+	drawBox(x, y, x2, y2, color);
 }
 
 void ScummEngine::drawBox(int x, int y, int x2, int y2, int color) {
@@ -4586,6 +4699,8 @@ void ScummEngine::transitionEffect(int a) {
 		j = transitionEffects[a].stripTable[i];
 		if (j == 24)
 			j = height / 8 - 1;
+		else if (j == 39)
+			j = _gdi->_numStrips - 1;
 		tab_2[i] = j;
 	}
 

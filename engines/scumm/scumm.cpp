@@ -488,6 +488,7 @@ ScummEngine::ScummEngine(OSystem *syst, const DetectorResult &dr)
 ScummEngine::~ScummEngine() {
 	g_system->setFeatureState(OSystem::kFeatureSplitScreen, false);
 	g_system->setScreenSnapshotMode(OSystem::kSnapshotOff);
+	g_system->getSceneColumns(OSystem::kSceneFullScreen, 0, 0);
 
 	delete _musicEngine;
 
@@ -3322,6 +3323,7 @@ load_game:
 			displayDialog();
 		drawDirtyScreenParts();
 	} else {
+		updateWideScreen();
 		walkActors();
 		moveCamera();
 		updateObjectStates();
@@ -3417,9 +3419,9 @@ void ScummEngine::scummLoop_updateScummVars() {
 #endif
 			VAR(VAR_CAMERA_POS_X) = (camera._cur.x >> V12_X_SHIFT);
 	} else if (_game.version <= 2) {
-		VAR(VAR_CAMERA_POS_X) = camera._cur.x >> V12_X_SHIFT;
+		VAR(VAR_CAMERA_POS_X) = scriptCameraX() >> V12_X_SHIFT;
 	} else {
-		VAR(VAR_CAMERA_POS_X) = camera._cur.x;
+		VAR(VAR_CAMERA_POS_X) = scriptCameraX();
 	}
 	if (_game.version <= 7)
 		VAR(VAR_HAVE_MSG) = _haveMsg;
@@ -3427,7 +3429,7 @@ void ScummEngine::scummLoop_updateScummVars() {
 	if (_game.version >= 3) {
 		VAR(VAR_VIRT_MOUSE_X) = _virtualMouse.x;
 		VAR(VAR_VIRT_MOUSE_Y) = _virtualMouse.y;
-		VAR(VAR_MOUSE_X) = _mouse.x;
+		VAR(VAR_MOUSE_X) = _mouse.x - screenXOffset(_mouse.y);
 		VAR(VAR_MOUSE_Y) = _mouse.y;
 		if (VAR_DEBUGMODE != 0xFF) {
 			// This is NOT for the Mac version of Indy3/Loom

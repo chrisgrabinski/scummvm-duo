@@ -1451,6 +1451,32 @@ protected:
 	Common::Array<OSystem::SplitScreenElement> _splitScreenElements;
 	bool _splitScreenElementsSent = false;
 	Common::Rect _splitSentenceRect;
+	bool usesSplitScreenPanel() const;
+
+	// Wide rooms: where the display has room for it, the screen shows more of a room than the
+	// original one does, with the same number of extra columns at each side (_wideMargin).
+	// Scripts keep seeing the original screen: its coordinates are shifted by screenXOffset().
+	int _wideRooms = -1;        // Whether the game can do this (-1: not yet known)
+	int _wideMargin = 0;
+	int _wideCameraWanted = -1; // Where a script last put or sent the camera
+	void updateWideScreen();
+	void setScreenWidth(int width);
+	int logicalScreenWidth() const { return _screenWidth - 2 * _wideMargin; }
+	int screenXOffset(int y) const;
+	void drawScriptBox(int x, int y, int x2, int y2, int color);
+	void getStringXOffsets(int slot, int &left, int &right);
+	bool _wideDialogShifted = false;
+
+	// Puts a text slot at its place on a widened screen for as long as it is being drawn
+	struct WideString {
+		WideString(ScummEngine *vm, int slot);
+		~WideString();
+
+		ScummEngine *_vm;
+		int _slot, _left, _right;
+	};
+	void getCameraLimits(int &minX, int &maxX) const;
+	int scriptCameraX() const;
 	void initVirtScreen(VirtScreenNumber slot, int top, int width, int height, bool twobufs, bool scrollable);
 	void initBGBuffers(int height);
 	void initCycl(const byte *ptr);	// Color cycle

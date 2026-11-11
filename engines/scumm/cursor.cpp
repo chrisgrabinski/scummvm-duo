@@ -451,6 +451,8 @@ void ScummEngine_v6::grabCursor(int x, int y, int w, int h) {
 		return;
 	}
 
+	x += screenXOffset(y);
+
 	setCursorFromBuffer((byte *)vs->getBasePtr(x, y - vs->topline), w, h, vs->pitch);
 }
 

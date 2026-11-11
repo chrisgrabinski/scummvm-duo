@@ -941,6 +941,8 @@ bool ScummEngine::loadState(int slot, bool compat, Common::String &filename) {
 	updatePalette();
 
 	initScreens(sb, sh);
+	_wideCameraWanted = -1;
+	updateWideScreen();
 
 	_completeScreenRedraw = true;
 
