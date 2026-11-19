@@ -43,6 +43,7 @@ public:
 		Common::Rect draw; ///< Where it is drawn in the window
 		Common::Rect hit;  ///< Where a tap selects it (empty if not selectable)
 		bool linear;       ///< Taps map proportionally over the whole of src, not to its center
+		bool lower = false; ///< src is in the image set with OSystem::setLowerScreenImage(), not in the game screen
 	};
 
 	void setElements(const Common::Array<Element> &elements) {
@@ -140,7 +141,7 @@ public:
 	Common::Point windowToGame(int x, int y, int gameWidth, int gameHeight) const {
 		for (uint i = 0; i < _cells.size(); i++) {
 			const Cell &c = _cells[i];
-			if (c.hit.isEmpty() || !c.hit.contains(x, y))
+			if (c.lower || c.hit.isEmpty() || !c.hit.contains(x, y))
 				continue;
 			if (c.linear)
 				return Common::Point(CLIP<int>(c.src.left + (x - c.hit.left) * c.src.width() / c.hit.width(), c.src.left, c.src.right - 1),
@@ -151,11 +152,26 @@ public:
 		return Common::Point(gameWidth - 1, gameHeight - 1);
 	}
 
+	/**
+	 * Finds what a tap in the window is on in the image set with OSystem::setLowerScreenImage(),
+	 * if it is on a cell drawn from it.
+	 */
+	bool windowToLowerImage(int x, int y, Common::Point &p) const {
+		for (uint i = 0; i < _cells.size(); i++) {
+			const Cell &c = _cells[i];
+			if (c.lower && !c.hit.isEmpty() && c.hit.contains(x, y)) {
+				p = Common::Point(c.src.left + c.src.width() / 2, c.src.top + c.src.height() / 2);
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** Finds the window position of what is at a game screen position. */
 	Common::Point gameToWindow(int x, int y) const {
 		for (uint i = 0; i < _cells.size(); i++) {
 			const Cell &c = _cells[i];
-			if (c.hit.isEmpty() || !c.src.contains(x, y))
+			if (c.lower || c.hit.isEmpty() || !c.src.contains(x, y))
 				continue;
 			if (c.linear)
 				return Common::Point(c.hit.left + (x - c.src.left) * c.hit.width() / c.src.width(),
@@ -279,9 +295,10 @@ private:
 		has = true;
 	}
 
-	void addCell(const Common::Rect &src, const Common::Rect &draw, const Common::Rect &hit, bool linear) {
+	void addCell(const Common::Rect &src, const Common::Rect &draw, const Common::Rect &hit, bool linear, bool lower = false) {
 		Cell c;
 		c.linear = linear;
+		c.lower = lower;
 		c.src = src;
 		c.draw = draw;
 		c.hit = hit;
@@ -373,15 +390,23 @@ private:
 			const int kr = MIN<int>(2, (rc - spanB[c]) / 2);
 
 			if (midpoints) {
-				// Fill the button with a stretched column of its own background and
-				// leave a thin black border around it
-				const float textX = dx + gapDst;
-				const float textW = (spanB[c] - spanA[c]) * sy;
-				const int fl = fillX >= 0 ? fillX : spanA[c];
-					addSeg(box, fl, fl + 1, dx + sy, textX, top, bottom);
-				addSeg(box, spanA[c], spanB[c], textX, textX + textW, top, bottom);
-				const int fr = fillX >= 0 ? fillX : spanB[c] - 1;
-					addSeg(box, fr, fr + 1, textX + textW, dx + cellW - sy, top, bottom);
+				// Fill the button with a stretched column of its own background, leaving a thin
+				// black border, and center each text in it. The column right of the texts is used
+				// on both sides: Day of the Tentacle has its verbs at the left edge of their plates.
+				const int fill = fillX >= 0 ? fillX : spanB[c] - 1;
+				addSeg(box, fill, fill + 1, dx + sy, dx + cellW - sy, top, bottom);
+				for (uint i = 0; i < texts.size(); i++) {
+					if (indexOf(colReps, centersX[i], 6) != c)
+						continue;
+					// The texts are reported one pixel wider at each side
+					const Common::Rect src(texts[i].left + 1, texts[i].top, texts[i].right - 1, texts[i].bottom);
+					if (src.isEmpty())
+						continue;
+					const float textX = dx + (cellW - src.width() * sy) / 2;
+					const float textY = top + (src.top - box.top) * sy;
+					addCell(src, Common::Rect((int)textX, (int)textY, (int)(textX + src.width() * sy + 0.5f),
+					                          (int)(textY + src.height() * sy + 0.5f)), Common::Rect(), false);
+				}
 			} else {
 				addSeg(box, lc, lc + kl, dx, dx + kl * sy, top, bottom);
 				addSeg(box, lc + kl, spanA[c], dx + kl * sy, dx + gapDst, top, bottom);
@@ -413,16 +438,55 @@ private:
 		        Common::Rect((int)dx0, (int)top, (int)(dx1 + 0.5f), bottom), Common::Rect(), false);
 	}
 
+	// Shows the inventory items (group 8) in a grid of as many rows and columns as fit in the
+	// area with cells at least as large as the empty slot (group 9) at scale s, made smaller only
+	// when the items would not fit. The cells grow to fill the area; each is filled with the
+	// background of the empty slot, leaving a thin black border, and has its icon centered.
+	void addItemGrid(const Common::Array<Common::Rect> &items, const Common::Rect &emptySlot, const Common::Rect &area, float s) {
+		if (area.isEmpty() || emptySlot.isEmpty())
+			return;
+		const int n = items.size();
+		int cols = 1, rows = 1;
+		for (int i = 0; i < 40; i++) {
+			cols = MAX<int>(1, (int)(area.width() / (emptySlot.width() * s)));
+			rows = MAX<int>(1, (int)(area.height() / (emptySlot.height() * s)));
+			if (cols * rows >= n)
+				break;
+			s *= 0.95f;
+		}
+
+		const float cellW = (float)area.width() / cols;
+		const float cellH = (float)area.height() / rows;
+		const Common::Rect fill(emptySlot.left + 1, emptySlot.top + 1, emptySlot.left + 2, emptySlot.top + 2);
+		for (int j = 0; j < cols * rows; j++) {
+			const float x = area.left + (j % cols) * cellW;
+			const float y = area.top + (j / cols) * cellH;
+			addCell(fill, Common::Rect((int)(x + s), (int)(y + s), (int)(x + cellW - s), (int)(y + cellH - s)), Common::Rect(), false, true);
+			if (j >= n)
+				continue;
+			const Common::Rect &icon = items[j];
+			const float iconX = x + (cellW - icon.width() * s) / 2;
+			const float iconY = y + (cellH - icon.height() * s) / 2;
+			addCell(icon, Common::Rect((int)iconX, (int)iconY, (int)(iconX + icon.width() * s + 0.5f), (int)(iconY + icon.height() * s + 0.5f)),
+			        Common::Rect(), false, true);
+			addCell(icon, Common::Rect(), Common::Rect((int)x, (int)y, (int)(x + cellW), (int)(y + cellH)), false, true);
+		}
+	}
+
 	// Shows the verb box (group 4, with its texts in group 6) above the inventory
 	// box (group 5), both at the bottom of the area under the sentence line.
 	void computeRegions(const Common::Rect &area) {
-		Common::Rect sentence, boxes[2];
-		bool hasSentence = false, hasBox[2] = { false, false };
-		Common::Array<Common::Rect> texts, slots;
+		Common::Rect sentence, boxes[2], emptySlot;
+		bool hasSentence = false, hasBox[2] = { false, false }, hasEmptySlot = false;
+		Common::Array<Common::Rect> texts, slots, items;
 		for (uint i = 0; i < _elements.size(); i++) {
 			const uint8 g = _elements[i].group;
 			if (g == 7)
 				slots.push_back(_elements[i].src); // Inventory slots, inside the group 5 box
+			else if (g == 8)
+				items.push_back(_elements[i].src); // Inventory items, in the lower screen image
+			else if (g == 9)
+				unite(emptySlot, hasEmptySlot, _elements[i].src);
 			else if (g == 0)
 				unite(sentence, hasSentence, _elements[i].src);
 			else if (g == 4 || g == 5)
@@ -447,10 +511,38 @@ private:
 			maxW = MAX(maxW, (int)boxes[b].width());
 			srcH += boxes[b].height() + gapSrc;
 		}
+		if (hasEmptySlot) {
+			// Sized as if the inventory had the game's two rows of three slots
+			hasBox[1] = false;
+			maxW = MAX<int>(maxW, 3 * emptySlot.width());
+			srcH += 2 * emptySlot.height() + gapSrc;
+		}
 
 		float scale = (float)areaW / maxW;
 		if (sentenceH + srcH * scale > areaH)
 			scale = MAX<float>(areaH - sentenceH, 1) / srcH;
+
+		if (hasEmptySlot) {
+			// The sentence and the verbs from the top, and the inventory in all the room below them
+			float y = area.top;
+			if (hasSentence) {
+				addCell(Common::Rect(0, sentence.top, _gameWidth, sentence.top + MAX<int>(sentence.height(), kTextHeight)),
+				        Common::Rect(area.left, (int)y, area.right, (int)(y + sentenceH)), Common::Rect(), false);
+				y += sentenceH + gapSrc * scale;
+			}
+			if (hasBox[0]) {
+				const float h = boxes[0].height() * scale;
+				if (!addStretchedBox(boxes[0], texts, area, scale, y)) {
+					const int dw = (int)(boxes[0].width() * scale);
+					const int dx = area.left + (areaW - dw) / 2;
+					const Common::Rect draw(dx, (int)y, dx + MAX(dw, 1), (int)(y + h));
+					addCell(boxes[0], draw, draw, true);
+				}
+				y += h + gapSrc * scale;
+			}
+			addItemGrid(items, emptySlot, Common::Rect(area.left, (int)y, area.right, area.bottom), scale);
+			return;
+		}
 
 		float y = area.bottom;
 		for (int b = 1; b >= 0; b--) {

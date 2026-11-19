@@ -345,7 +345,11 @@ void AndroidGraphicsManager::touchControlNotifyChanged() {
 }
 
 int AndroidGraphicsManager::filterLowerScreenEvent(Common::Event &event) {
-	if (!isInLowerScreen(event.mouse.y))
+	// Taps on the cells of the split screen layout drawn from the lower screen image go there too
+	Common::Point inImage;
+	const bool inPanel = !isInLowerScreen(event.mouse.y) && isSplitScreenInGame() && _splitScreenPanel &&
+	                     _splitLayout.windowToLowerImage(event.mouse.x, event.mouse.y, inImage);
+	if (!inPanel && !isInLowerScreen(event.mouse.y))
 		return 0;
 
 	// customType tells the engine what happened: 0 left press, 1 right press, 2 left release, 3 right release
@@ -373,7 +377,7 @@ int AndroidGraphicsManager::filterLowerScreenEvent(Common::Event &event) {
 	}
 
 	event.type = Common::EVENT_LOWER_SCREEN_TOUCH;
-	event.mouse = windowToLowerScreen(event.mouse.x, event.mouse.y);
+	event.mouse = inPanel ? inImage : windowToLowerScreen(event.mouse.x, event.mouse.y);
 	return 1;
 }
 

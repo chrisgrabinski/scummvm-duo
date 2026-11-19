@@ -879,7 +879,7 @@ void OpenGLGraphicsManager::updateScreen() {
 		if (!_lowerScreen)
 			updateSnapshotDiff();
 	}
-	if (_lowerScreen && isStackedInGame()) {
+	if (_lowerScreen && (isStackedInGame() || (isSplitScreenInGame() && _splitScreenPanel))) {
 		_lowerScreen->updateGLTexture();
 	}
 
@@ -936,9 +936,10 @@ void OpenGLGraphicsManager::updateScreen() {
 		if (_splitScreenPanel) {
 			const Common::Array<SplitScreenLayout::Cell> &cells = _splitLayout.cells();
 			for (uint i = 0; i < cells.size(); i++) {
-				if (cells[i].draw.isEmpty())
+				if (cells[i].draw.isEmpty() || (cells[i].lower && !_lowerScreen))
 					continue;
-				_pipeline->drawTexture(tex, cells[i].draw.left, cells[i].draw.top, cells[i].draw.width(), cells[i].draw.height(), cells[i].src);
+				_pipeline->drawTexture(cells[i].lower ? _lowerScreen->getGLTexture() : tex,
+				                       cells[i].draw.left, cells[i].draw.top, cells[i].draw.width(), cells[i].draw.height(), cells[i].src);
 			}
 		} else {
 			_pipeline->drawTexture(tex, _splitBottomRect.left, _splitBottomRect.top, _splitBottomRect.width(), _splitBottomRect.height(), bottomClip);

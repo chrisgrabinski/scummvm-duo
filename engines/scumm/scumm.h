@@ -1447,6 +1447,7 @@ protected:
 	virtual void handleLowerScreenTouch(Common::Point p, int what) {}
 	OSystem::ScreenSnapshotMode _screenSnapshotMode = OSystem::kSnapshotOff;
 	virtual void addSplitScreenInventory(Common::Array<OSystem::SplitScreenElement> &elements) {}
+	virtual void addSplitScreenItems(Common::Array<OSystem::SplitScreenElement> &elements) {}
 
 	Common::Array<OSystem::SplitScreenElement> _splitScreenElements;
 	bool _splitScreenElementsSent = false;

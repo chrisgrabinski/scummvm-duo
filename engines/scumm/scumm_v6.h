@@ -301,6 +301,13 @@ protected:
 	void handleLowerScreenTouch(Common::Point p, int what) override;
 	void renderLowerPanel();
 
+	// Day of the Tentacle: all the inventory items, drawn into the lower screen image for the split screen
+	void addSplitScreenItems(Common::Array<OSystem::SplitScreenElement> &elements) override;
+	void renderSplitScreenItems();
+	void tapSplitScreenItem(int index, bool right);
+	Common::Array<int> _splitItems;    // The items shown, in the order of the game's inventory
+	Common::String _splitItemsSignature;
+
 	// The Curse of Monkey Island: its inventory chest, made of blast objects, is shown on the lower screen
 	void drawBlastObjectsToLowerScreen(int first, bool coin);
 	Common::Array<byte> _prevMain;   // The main screen of the last frame without the verb coin

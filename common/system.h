@@ -694,9 +694,11 @@ public:
 	virtual void setScreenSnapshotMode(ScreenSnapshotMode mode) {}
 
 	/**
-	 * Sets what the lower screen shows in kSnapshotLowerScreen mode. The image
-	 * must use the overlay format. Taps on that screen are sent as
-	 * EVENT_LOWER_SCREEN_TOUCH events and do not move the pointer.
+	 * Sets what the lower screen shows in kSnapshotLowerScreen mode, and what the
+	 * split screen elements of groups 8 and 9 are drawn from. The image must use
+	 * the overlay format. Taps on that screen, or on those elements, are sent as
+	 * EVENT_LOWER_SCREEN_TOUCH events, at their position in the image, and do not
+	 * move the pointer.
 	 */
 	virtual void setLowerScreenImage(const Graphics::Surface *image) {}
 

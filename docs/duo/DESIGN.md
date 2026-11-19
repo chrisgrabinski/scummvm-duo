@@ -22,7 +22,9 @@ untouched.
   coordinates and a group id) so the backend can lay them out.
 
 Group ids: 0 sentence line, 1 verbs, 2 inventory items, 3 inventory arrows, 4 and 5 boxes shown
-whole (verb box, inventory box), 6 verb texts inside the verb box.
+whole (verb box, inventory box), 6 verb texts inside the verb box, 7 inventory slots inside the
+inventory box, 8 inventory items and 9 the empty slot, both in the image set with
+`setLowerScreenImage()` rather than in the game screen.
 
 ### Backend
 
@@ -99,8 +101,10 @@ These games keep the verbs in the left 144 columns of the verb screen and the in
 right. `updateSplitScreenElements()` reports the verb texts (group 6), a verb box (group 4) and an
 inventory box (group 5), and the layout shows the two boxes whole, one above the other.
 
-- The verb box is stretched to the full width, with equal columns and the texts centered in them
-  (`addStretchedBox()`).
+- The verb box is stretched to the full width, with equal columns and each text centered in its
+  column (`addStretchedBox()`). The column is filled with the background just right of its texts:
+  Day of the Tentacle has its verbs at the left edge of dark plates, so its verb box is reported
+  from the left of the verbs.
 - Monkey Island 2 also reports its inventory slots (group 7): two scroll arrow cells and a 4 by 2 grid
   of 40 by 24 pixel slots, from measurements of what the game draws. They go through the same code: the
   slot columns are of equal width and stretched, filled with a plain background column, and each icon
@@ -110,6 +114,26 @@ inventory box (group 5), and the layout shows the two boxes whole, one above the
   detected by a text verb wider than 150 pixels (Monkey Island 2), or by a text verb at the left edge
   (Monkey Island 1: its lines are small and narrow, and no normal verb starts there). Then the lines are reported as rows (group 1), the
   first line included, which would else look like the sentence line, and there are no boxes.
+
+### All the items of Day of the Tentacle
+
+The game shows six items at a time; the split screen shows all of them, below the verbs, in a grid of
+as many rows and columns as fit with cells at least as large as the game's slots (made smaller only
+when the items would not fit otherwise), grown to fill the area (`addItemGrid()`). From the game's
+scripts (global inventory script, `VAR_INVENTORY_SCRIPT`):
+
+- The slots are the verbs 200-205 (3 by 2, 40 by 24 pixels from (160, 152)), the arrows 208 and 209.
+  The array 148 holds the first row shown, per actor; the array 211 the object in each slot.
+- Given an object, the script scrolls the slots to show it.
+- The icon of an item is the object of room 60 that its verb 91 puts in variable 186; 624 is the
+  empty slot.
+
+`renderSplitScreenItems()` runs verb 91 of every item and draws the icons as the game draws a slot
+(`setVerbObject()` and `drawVerbBitmap()` with a free verb slot, into a buffer in place of the verb
+screen), one cell every 48 pixels after the empty slot, into the lower screen image. It is drawn again
+when the items, the icons of the game's slots, the room or the palette change. A tap on an item
+(`EVENT_LOWER_SCREEN_TOUCH`) runs the inventory script with that item and then the input script as if
+its slot was clicked (left or right).
 
 After a change to `split-screen-layout.h`, touch the `.cpp` files that include it (the build does
 not notice a changed header).

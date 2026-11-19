@@ -711,8 +711,149 @@ void ScummEngine_v6::renderLowerPanel() {
 	image.free();
 }
 
+// Day of the Tentacle shows six inventory items at a time, in the slot verbs 200-205, scrolled by
+// the arrow verbs 208 and 209. Its inventory script (VAR_INVENTORY_SCRIPT) fills the slots: it
+// keeps the first row shown in the array 148 (per actor, three items to a row), puts the object of
+// each slot in the array 211, and scrolls to the object it is given. The icon of an item is the
+// object of room 60 that the item's verb 91 puts in variable 186 (624, the empty slot, if it has
+// no verb 91). Here, all the items are drawn, as the game draws a slot, into the lower screen
+// image, one 40x24 cell every 48 pixels, after the empty slot.
+static const int kSplitItemPitch = 48;
+
+void ScummEngine_v6::addSplitScreenItems(Common::Array<OSystem::SplitScreenElement> &elements) {
+	const int ego = VAR(VAR_EGO);
+	Common::Array<int> items;
+	const int count = getInventoryCount(ego);
+	for (int i = 1; i <= count; i++) {
+		const int obj = findInventory(ego, i);
+		if (obj)
+			items.push_back(obj);
+	}
+
+	// Drawn again when the items, the icons the game shows or the palette change
+	uint32 palette = 0;
+	for (int i = 0; i < 768; i++)
+		palette = palette * 31 + _currentPalette[i];
+	Common::String sig = Common::String::format("%d|%d|%u|", ego, _currentRoom, palette);
+	for (int i = 0; i < 6; i++) {
+		const int slot = getVerbSlot(200 + i, 0);
+		sig += Common::String::format("%d,", slot ? _verbs[slot].imgindex : -1);
+	}
+	for (uint i = 0; i < items.size(); i++)
+		sig += Common::String::format("%d,", items[i]);
+	if (sig != _splitItemsSignature) {
+		_splitItemsSignature = sig;
+		_splitItems = items;
+		renderSplitScreenItems();
+	}
+
+	OSystem::SplitScreenElement e;
+	e.group = 9; // The empty slot
+	e.src = Common::Rect(0, 0, 40, 24);
+	elements.push_back(e);
+	e.group = 8; // The items, without the black edges of their slot
+	for (uint i = 0; i < _splitItems.size(); i++) {
+		const int x = (i + 1) * kSplitItemPitch;
+		e.src = Common::Rect(x, 0, x + 39, 22);
+		elements.push_back(e);
+	}
+}
+
+void ScummEngine_v6::renderSplitScreenItems() {
+	const int kIconRoom = 60, kEmptyIcon = 624, kIconVar = 186;
+
+	// A free verb slot to draw the icons with
+	int verb = 0;
+	for (int i = 1; i < _numVerbs && !verb; i++) {
+		if (!_verbs[i].verbid)
+			verb = i;
+	}
+	if (!verb)
+		return;
+
+	Common::Array<int> icons;
+	icons.push_back(kEmptyIcon);
+	const int savedIcon = _scummVars[kIconVar];
+	for (uint i = 0; i < _splitItems.size(); i++) {
+		int icon = kEmptyIcon;
+		if (getVerbEntrypoint(_splitItems[i], 91)) {
+			int args[NUM_SCRIPT_LOCAL] = {0};
+			runObjectScript(_splitItems[i], 91, false, true, args);
+			icon = _scummVars[kIconVar];
+		}
+		icons.push_back(icon);
+	}
+	_scummVars[kIconVar] = savedIcon;
+
+	// Draw like the game draws a slot, into a buffer in place of the verb screen
+	VirtScreen &vs = _virtscr[kVerbVirtScreen];
+	const VerbSlot savedVerb = _verbs[verb];
+	uint16 savedTop[ARRAYSIZE(vs.tdirty)], savedBottom[ARRAYSIZE(vs.bdirty)];
+	memcpy(savedTop, vs.tdirty, sizeof(savedTop));
+	memcpy(savedBottom, vs.bdirty, sizeof(savedBottom));
+	void *savedPixels = vs.Graphics::Surface::getPixels();
+	byte *savedBack = vs.backBuf;
+	const bool savedTwo = vs.hasTwoBuffers;
+
+	Common::Array<byte> buffer(vs.pitch * vs.h);
+	vs.setPixels(buffer.data());
+	vs.backBuf = nullptr;
+	vs.hasTwoBuffers = false;
+
+	const Graphics::PixelFormat format = g_system->getOverlayFormat();
+	Graphics::Surface image;
+	image.create(icons.size() * kSplitItemPitch, 24, format);
+	image.fillRect(Common::Rect(image.w, image.h), format.ARGBToColor(255, 0, 0, 0));
+	for (uint i = 0; i < icons.size(); i++) {
+		memset(buffer.data(), 0, buffer.size());
+		setVerbObject(kIconRoom, icons[i], verb);
+		drawVerbBitmap(verb, 0, vs.topline);
+		for (int y = 0; y < 24 && y < vs.h; y++) {
+			const byte *src = &buffer[y * vs.pitch + vs.xstart];
+			uint32 *dst = (uint32 *)image.getBasePtr(i * kSplitItemPitch, y);
+			for (int x = 0; x < 40; x++)
+				dst[x] = format.ARGBToColor(255, _currentPalette[src[x] * 3], _currentPalette[src[x] * 3 + 1], _currentPalette[src[x] * 3 + 2]);
+		}
+	}
+
+	_res->nukeResource(rtVerb, verb);
+	_verbs[verb] = savedVerb;
+	vs.setPixels(savedPixels);
+	vs.backBuf = savedBack;
+	vs.hasTwoBuffers = savedTwo;
+	memcpy(vs.tdirty, savedTop, sizeof(savedTop));
+	memcpy(vs.bdirty, savedBottom, sizeof(savedBottom));
+
+	g_system->setLowerScreenImage(&image);
+	image.free();
+}
+
+// Has the game scroll its inventory to the item and then click its slot, as a tap on it would
+void ScummEngine_v6::tapSplitScreenItem(int index, bool right) {
+	const int kSlotObjects = 211;
+	if (_userPut <= 0 || index < 0 || index >= (int)_splitItems.size())
+		return;
+	const int obj = _splitItems[index];
+
+	runInventoryScript(obj);
+	for (int i = 0; i < 6; i++) {
+		if (readArray(kSlotObjects, 0, i) != obj)
+			continue;
+		const int slot = getVerbSlot(200 + i, 0);
+		if (slot && _verbs[slot].curmode == 1)
+			runInputScript(kVerbClickArea, 200 + i, right ? 2 : 1);
+		return;
+	}
+}
+
 void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, int what) {
 	// What happened: 0 left press, 1 right press, 2 left release, 3 right release
+	if (_game.id == GID_TENTACLE) {
+		if (what == 0 || what == 1)
+			tapSplitScreenItem(p.x / kSplitItemPitch - 1, what == 1);
+		return;
+	}
+
 	if (_game.id == GID_SAMNMAX && what != 0)
 		return;
 
@@ -809,7 +950,6 @@ void ScummEngine::updateSplitScreenElements() {
 		return;
 	// Monkey Island (VGA), Monkey Island 2 and Day of the Tentacle have the verbs at the left and the inventory at their right
 	const bool monkey = _game.id == GID_MONKEY || _game.id == GID_MONKEY2 || _game.id == GID_TENTACLE;
-	const int inventoryRight = _game.id == GID_TENTACLE ? 280 : _screenWidth;
 
 	const VirtScreen &vs = _virtscr[kVerbVirtScreen];
 	Common::Array<OSystem::SplitScreenElement> elements;
@@ -880,12 +1020,19 @@ void ScummEngine::updateSplitScreenElements() {
 	if (monkey && !dialog && !verbTexts.isEmpty()) {
 		const int top = MAX<int>(vs.topline + 8, verbTexts.top - 2);
 		const int bottom = MIN<int>(_screenHeight, verbTexts.bottom + 2);
+		// The verbs of Day of the Tentacle are at the left edge of their plates: start the box
+		// at them, so that its columns are split between the texts
 		e.group = 4;
-		e.src = Common::Rect(0, top, 144, bottom);
+		e.src = Common::Rect(_game.id == GID_TENTACLE ? verbTexts.left : 0, top, 144, bottom);
 		elements.push_back(e);
-		e.group = 5;
-		e.src = Common::Rect(144, top, inventoryRight, bottom);
-		elements.push_back(e);
+		if (_game.id == GID_TENTACLE) {
+			// All the items, not only the six the game shows, drawn into the lower screen image
+			addSplitScreenItems(elements);
+		} else {
+			e.group = 5;
+			e.src = Common::Rect(144, top, _screenWidth, bottom);
+			elements.push_back(e);
+		}
 
 		if (_game.id == GID_MONKEY2) {
 			// The inventory is a grid of slots, 40 by 24 pixels, at the right of two scroll arrow cells
