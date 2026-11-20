@@ -106,7 +106,8 @@ inventory box (group 5), and the layout shows the two boxes whole, one above the
   Day of the Tentacle has its verbs at the left edge of dark plates, so its verb box is reported
   from the left of the verbs.
 - Monkey Island 2 also reports its inventory slots (group 7): two scroll arrow cells and a 4 by 2 grid
-  of 40 by 24 pixel slots, from measurements of what the game draws. They go through the same code: the
+  of 40 by 24 pixel slots, from measurements of what the game draws (only used when the version's
+  scripts are not the known ones; see below). They go through the same code: the
   slot columns are of equal width and stretched, filled with a plain background column, and each icon
   is kept at its size and centered. The first column (the arrows) keeps its own width at the left,
   with no extra background. The arrow cells are always reported, as the arrows come and go.
@@ -115,25 +116,39 @@ inventory box (group 5), and the layout shows the two boxes whole, one above the
   (Monkey Island 1: its lines are small and narrow, and no normal verb starts there). Then the lines are reported as rows (group 1), the
   first line included, which would else look like the sentence line, and there are no boxes.
 
-### All the items of Day of the Tentacle
+### All the inventory items (Monkey Island, Monkey Island 2, Fate of Atlantis, Day of the Tentacle)
 
-The game shows six items at a time; the split screen shows all of them, below the verbs, in a grid of
-as many rows and columns as fit with cells at least as large as the game's slots (made smaller only
-when the items would not fit otherwise), grown to fill the area (`addItemGrid()`). From the game's
-scripts (global inventory script, `VAR_INVENTORY_SCRIPT`):
+These games show a few items at a time, in slot verbs scrolled by two arrow verbs; the split screen
+shows all of them, below the verbs, in a grid of as many rows and columns as fit with cells at least
+as large as the game's slots (made smaller only when the items would not fit otherwise), grown to fill
+the area (`addItemGrid()`). It replaces the inventory box while the game shows its arrow verb (not in
+conversations and cutscenes).
 
-- The slots are the verbs 200-205 (3 by 2, 40 by 24 pixels from (160, 152)), the arrows 208 and 209.
-  The array 148 holds the first row shown, per actor; the array 211 the object in each slot.
-- Given an object, the script scrolls the slots to show it.
-- The icon of an item is the object of room 60 that its verb 91 puts in variable 186; 624 is the
-  empty slot.
+The numbers, in `kSplitInventories` (verbs.cpp), are from the games' scripts, read with a
+disassembler written for this (the scripts are not in this repository):
+
+| | Monkey Island | Monkey Island 2 | Fate of Atlantis | Day of the Tentacle |
+|---|---|---|---|---|
+| Inventory script | 9 (var 34) | 9 (var 34) | 10 (var 342) | var 34 |
+| Slot verbs, layout | 200-207, 4 by 2 | 200-207, 4 by 2 | 101-110, 5 by 2 | 200-205, 3 by 2 |
+| Slot size | 40x24 | 40x24 | 32x24 | 40x24 |
+| First row shown | var 118 | var 119 | var 126 | array 148, per actor |
+| Object of slot k | var 133+k | var 134+k | var 141+k | array 211 |
+| Icon: verb 91 sets | var 376, room 99 | var 302, room 94 | var 161, room 96 | var 186, room 60 |
+| Empty slot image | 1032 | 956 | none (copied from the screen) | 624 |
+
+- The inventory script draws the slots from the row shown. Given an argument, the Monkey Island scripts
+  scroll to the end (0 keeps the row), the Fate of Atlantis script to the end unless it is given 1,
+  and the Day of the Tentacle script to the object it is given.
+- Fate of Atlantis hides the items of class 30, and object 933 when it has class 158.
 
 `renderSplitScreenItems()` runs verb 91 of every item and draws the icons as the game draws a slot
 (`setVerbObject()` and `drawVerbBitmap()` with a free verb slot, into a buffer in place of the verb
 screen), one cell every 48 pixels after the empty slot, into the lower screen image. It is drawn again
 when the items, the icons of the game's slots, the room or the palette change. A tap on an item
-(`EVENT_LOWER_SCREEN_TOUCH`) runs the inventory script with that item and then the input script as if
-its slot was clicked (left or right).
+(`EVENT_LOWER_SCREEN_TOUCH`) scrolls the slots to it (`splitScrollTo()`: Day of the Tentacle's script
+does it; for the others, the rows are tried from the one the item should be on) and runs the input
+script as if its slot was clicked (left or right).
 
 After a change to `split-screen-layout.h`, touch the `.cpp` files that include it (the build does
 not notice a changed header).

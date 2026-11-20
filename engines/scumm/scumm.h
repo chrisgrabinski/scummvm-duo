@@ -530,6 +530,8 @@ enum ScummBackendAction {
 
 extern const char *const insaneKeymapId;
 
+struct SplitInventory;
+
 /**
  * Base class for all SCUMM engines.
  */
@@ -1444,10 +1446,19 @@ protected:
 	bool _lowerHover = false;   // The pointer is over the lower screen
 	int _lowerPushed = 0;       // Events pushed for the lower screen, not yet read back
 	virtual void finishLowerScreen() {}
-	virtual void handleLowerScreenTouch(Common::Point p, int what) {}
+	virtual void handleLowerScreenTouch(Common::Point p, int what);
 	OSystem::ScreenSnapshotMode _screenSnapshotMode = OSystem::kSnapshotOff;
 	virtual void addSplitScreenInventory(Common::Array<OSystem::SplitScreenElement> &elements) {}
-	virtual void addSplitScreenItems(Common::Array<OSystem::SplitScreenElement> &elements) {}
+	// All the inventory items of the games with a slot inventory, see kSplitInventories
+	const SplitInventory *splitInventory() const;
+	bool addSplitScreenItems(Common::Array<OSystem::SplitScreenElement> &elements);
+	void renderSplitScreenItems(const SplitInventory &inv);
+	void tapSplitScreenItem(int index, bool right);
+	virtual int splitSlotObject(int slot);
+	virtual void splitScrollTo(int obj, int index);
+	Common::Array<int> _splitItems;    // The items shown, in the order of the game's inventory
+	Common::String _splitItemsSignature;
+	Common::Array<byte> _splitEmptySlot; // The look of an empty slot, for games without an image for it
 
 	Common::Array<OSystem::SplitScreenElement> _splitScreenElements;
 	bool _splitScreenElementsSent = false;

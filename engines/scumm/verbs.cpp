@@ -711,32 +711,123 @@ void ScummEngine_v6::renderLowerPanel() {
 	image.free();
 }
 
-// Day of the Tentacle shows six inventory items at a time, in the slot verbs 200-205, scrolled by
-// the arrow verbs 208 and 209. Its inventory script (VAR_INVENTORY_SCRIPT) fills the slots: it
-// keeps the first row shown in the array 148 (per actor, three items to a row), puts the object of
-// each slot in the array 211, and scrolls to the object it is given. The icon of an item is the
-// object of room 60 that the item's verb 91 puts in variable 186 (624, the empty slot, if it has
-// no verb 91). Here, all the items are drawn, as the game draws a slot, into the lower screen
-// image, one 40x24 cell every 48 pixels, after the empty slot.
+// The games below show a few inventory items at a time, in slot verbs scrolled by two arrow
+// verbs. Their inventory script fills the slots from the first row shown, puts the object of each
+// slot in a variable (an array in Day of the Tentacle) and draws the slot with the object of the
+// icon room that the item's verb 91 names (defaultIcon if it has none), or with emptyIcon. All
+// numbers are from the games' scripts (Monkey Island and Monkey Island 2: global script 9, Fate
+// of Atlantis: global script 10, Day of the Tentacle: the inventory script).
+//
+// For the split screen, all the items are drawn, as the game draws a slot, into the lower screen
+// image: one cell every kSplitItemPitch pixels, after one for the empty slot. A tap on an item
+// scrolls the game's slots to it and clicks its slot.
+struct SplitInventory {
+	byte gameId;
+	int scriptVar;      // Holds the number of the inventory script
+	int keepArg;        // The argument of the inventory script that keeps the row shown
+	int scrollVar;      // The first row shown
+	int perRow;
+	int slotVar;        // The object of slot k is in this variable + k
+	int firstVerb, numSlots, arrowVerb;
+	int iconVar, iconRoom, emptyIcon, defaultIcon;
+	int w, h;           // Of a slot
+	int left, top, right, bottom; // The part of a slot that is drawn, without its black edges
+	int hiddenClass;    // Items of this class are not shown
+};
+
+static const SplitInventory kSplitInventories[] = {
+	{ GID_MONKEY,   34,  0, 118, 4, 133, 200,  8, 208, 376, 99, 1032, 1031, 40, 24, 1, 1, 39, 23, 0 },
+	{ GID_MONKEY2,  34,  0, 119, 4, 134, 200,  8, 208, 302, 94,  956,  897, 40, 24, 1, 1, 39, 23, 0 },
+	{ GID_INDY4,   342,  1, 126, 5, 141, 101, 10, 111, 161, 96,    0, 1261, 32, 24, 0, 0, 32, 24, 30 },
+	{ GID_TENTACLE, 34,  0,   0, 3,   0, 200,  6, 208, 186, 60,  624,  624, 40, 24, 1, 0, 39, 22, 0 }
+};
+
 static const int kSplitItemPitch = 48;
 
-void ScummEngine_v6::addSplitScreenItems(Common::Array<OSystem::SplitScreenElement> &elements) {
+const SplitInventory *ScummEngine::splitInventory() const {
+	if (_game.version < 5 || (_game.features & GF_SMALL_HEADER))
+		return nullptr;
+	for (uint i = 0; i < ARRAYSIZE(kSplitInventories); i++) {
+		// Only where the scripts are the ones described: the inventory script is set
+		if (kSplitInventories[i].gameId == _game.id && _scummVars[kSplitInventories[i].scriptVar])
+			return &kSplitInventories[i];
+	}
+	return nullptr;
+}
+
+int ScummEngine::splitSlotObject(int slot) {
+	return _scummVars[splitInventory()->slotVar + slot];
+}
+
+void ScummEngine::splitScrollTo(int obj, int index) {
+	// Try the rows from the one the item should be on, until it is in a slot
+	const SplitInventory &inv = *splitInventory();
+	const int script = _scummVars[inv.scriptVar];
+	const int guess = index / inv.perRow;
+	for (int d = 0; d < 2 * guess + 4; d++) {
+		const int row = guess + ((d & 1) ? -(d + 1) / 2 : d / 2);
+		if (row < 0)
+			continue;
+		_scummVars[inv.scrollVar] = row;
+		int args[NUM_SCRIPT_LOCAL] = {inv.keepArg};
+		runScript(script, false, false, args);
+		for (int k = 0; k < inv.numSlots; k++) {
+			if (splitSlotObject(k) == obj)
+				return;
+		}
+	}
+}
+
+int ScummEngine_v6::splitSlotObject(int slot) {
+	const int kSlotObjects = 211;
+	return readArray(kSlotObjects, 0, slot);
+}
+
+void ScummEngine_v6::splitScrollTo(int obj, int index) {
+	// Given an item, the inventory script of Day of the Tentacle scrolls to it
+	runInventoryScript(obj);
+}
+
+bool ScummEngine::addSplitScreenItems(Common::Array<OSystem::SplitScreenElement> &elements) {
+	const SplitInventory *inv = splitInventory();
+	if (!inv)
+		return false;
+	// Not while the game does not show its inventory, for example in conversations
+	const int arrow = getVerbSlot(inv->arrowVerb, 0);
+	if (!arrow || !_verbs[arrow].curmode)
+		return false;
+
 	const int ego = VAR(VAR_EGO);
 	Common::Array<int> items;
 	const int count = getInventoryCount(ego);
 	for (int i = 1; i <= count; i++) {
 		const int obj = findInventory(ego, i);
-		if (obj)
-			items.push_back(obj);
+		if (!obj || (inv->hiddenClass && getClass(obj, inv->hiddenClass)))
+			continue;
+		// Fate of Atlantis keeps this one out of its slots
+		if (_game.id == GID_INDY4 && obj == 933 && getClass(obj, 158))
+			continue;
+		items.push_back(obj);
+	}
+
+	// Without an image for an empty slot, keep the look of one the game shows
+	if (!inv->emptyIcon && splitSlotObject(inv->numSlots - 1) == 0) {
+		VirtScreen &vs = _virtscr[kVerbVirtScreen];
+		const int x0 = 160 + (inv->numSlots / 2 - 1) * inv->w, y0 = 8 + inv->h;
+		if (vs.Graphics::Surface::getPixels() && x0 + inv->w <= vs.w && y0 + inv->h <= vs.h) {
+			_splitEmptySlot.resize(inv->w * inv->h);
+			for (int y = 0; y < inv->h; y++)
+				memcpy(&_splitEmptySlot[y * inv->w], vs.getBasePtr(x0 + vs.xstart, y0 + y), inv->w);
+		}
 	}
 
 	// Drawn again when the items, the icons the game shows or the palette change
 	uint32 palette = 0;
 	for (int i = 0; i < 768; i++)
 		palette = palette * 31 + _currentPalette[i];
-	Common::String sig = Common::String::format("%d|%d|%u|", ego, _currentRoom, palette);
-	for (int i = 0; i < 6; i++) {
-		const int slot = getVerbSlot(200 + i, 0);
+	Common::String sig = Common::String::format("%d|%d|%u|%u|", ego, _currentRoom, palette, _splitEmptySlot.size());
+	for (int i = 0; i < inv->numSlots; i++) {
+		const int slot = getVerbSlot(inv->firstVerb + i, 0);
 		sig += Common::String::format("%d,", slot ? _verbs[slot].imgindex : -1);
 	}
 	for (uint i = 0; i < items.size(); i++)
@@ -744,24 +835,23 @@ void ScummEngine_v6::addSplitScreenItems(Common::Array<OSystem::SplitScreenEleme
 	if (sig != _splitItemsSignature) {
 		_splitItemsSignature = sig;
 		_splitItems = items;
-		renderSplitScreenItems();
+		renderSplitScreenItems(*inv);
 	}
 
 	OSystem::SplitScreenElement e;
 	e.group = 9; // The empty slot
-	e.src = Common::Rect(0, 0, 40, 24);
+	e.src = Common::Rect(0, 0, inv->w, inv->h);
 	elements.push_back(e);
-	e.group = 8; // The items, without the black edges of their slot
+	e.group = 8; // The items
 	for (uint i = 0; i < _splitItems.size(); i++) {
 		const int x = (i + 1) * kSplitItemPitch;
-		e.src = Common::Rect(x, 0, x + 39, 22);
+		e.src = Common::Rect(x + inv->left, inv->top, x + inv->right, inv->bottom);
 		elements.push_back(e);
 	}
+	return true;
 }
 
-void ScummEngine_v6::renderSplitScreenItems() {
-	const int kIconRoom = 60, kEmptyIcon = 624, kIconVar = 186;
-
+void ScummEngine::renderSplitScreenItems(const SplitInventory &inv) {
 	// A free verb slot to draw the icons with
 	int verb = 0;
 	for (int i = 1; i < _numVerbs && !verb; i++) {
@@ -772,18 +862,18 @@ void ScummEngine_v6::renderSplitScreenItems() {
 		return;
 
 	Common::Array<int> icons;
-	icons.push_back(kEmptyIcon);
-	const int savedIcon = _scummVars[kIconVar];
+	icons.push_back(inv.emptyIcon);
+	const int savedIcon = _scummVars[inv.iconVar];
 	for (uint i = 0; i < _splitItems.size(); i++) {
-		int icon = kEmptyIcon;
+		int icon = inv.defaultIcon;
 		if (getVerbEntrypoint(_splitItems[i], 91)) {
 			int args[NUM_SCRIPT_LOCAL] = {0};
 			runObjectScript(_splitItems[i], 91, false, true, args);
-			icon = _scummVars[kIconVar];
+			icon = _scummVars[inv.iconVar];
 		}
 		icons.push_back(icon);
 	}
-	_scummVars[kIconVar] = savedIcon;
+	_scummVars[inv.iconVar] = savedIcon;
 
 	// Draw like the game draws a slot, into a buffer in place of the verb screen
 	VirtScreen &vs = _virtscr[kVerbVirtScreen];
@@ -802,17 +892,23 @@ void ScummEngine_v6::renderSplitScreenItems() {
 
 	const Graphics::PixelFormat format = g_system->getOverlayFormat();
 	Graphics::Surface image;
-	image.create(icons.size() * kSplitItemPitch, 24, format);
+	image.create(icons.size() * kSplitItemPitch, inv.h, format);
 	image.fillRect(Common::Rect(image.w, image.h), format.ARGBToColor(255, 0, 0, 0));
 	for (uint i = 0; i < icons.size(); i++) {
 		memset(buffer.data(), 0, buffer.size());
-		setVerbObject(kIconRoom, icons[i], verb);
-		drawVerbBitmap(verb, 0, vs.topline);
-		for (int y = 0; y < 24 && y < vs.h; y++) {
-			const byte *src = &buffer[y * vs.pitch + vs.xstart];
-			uint32 *dst = (uint32 *)image.getBasePtr(i * kSplitItemPitch, y);
-			for (int x = 0; x < 40; x++)
-				dst[x] = format.ARGBToColor(255, _currentPalette[src[x] * 3], _currentPalette[src[x] * 3 + 1], _currentPalette[src[x] * 3 + 2]);
+		const byte *pixels = &buffer[vs.xstart];
+		int pitch = vs.pitch;
+		if (icons[i]) {
+			setVerbObject(inv.iconRoom, icons[i], verb);
+			drawVerbBitmap(verb, 0, vs.topline);
+		} else if (_splitEmptySlot.size() == (uint)(inv.w * inv.h)) {
+			pixels = _splitEmptySlot.data();
+			pitch = inv.w;
+		}
+		for (int y = 0; y < inv.h && y < vs.h; y++) {
+			const byte *src = pixels + y * pitch;
+			for (int x = 0; x < inv.w; x++)
+				image.setPixel(i * kSplitItemPitch + x, y, format.ARGBToColor(255, _currentPalette[src[x] * 3], _currentPalette[src[x] * 3 + 1], _currentPalette[src[x] * 3 + 2]));
 		}
 	}
 
@@ -828,29 +924,33 @@ void ScummEngine_v6::renderSplitScreenItems() {
 	image.free();
 }
 
-// Has the game scroll its inventory to the item and then click its slot, as a tap on it would
-void ScummEngine_v6::tapSplitScreenItem(int index, bool right) {
-	const int kSlotObjects = 211;
-	if (_userPut <= 0 || index < 0 || index >= (int)_splitItems.size())
+// Has the game scroll its slots to the item and then click its slot, as a tap on it would
+void ScummEngine::tapSplitScreenItem(int index, bool right) {
+	const SplitInventory *inv = splitInventory();
+	if (!inv || _userPut <= 0 || index < 0 || index >= (int)_splitItems.size())
 		return;
 	const int obj = _splitItems[index];
 
-	runInventoryScript(obj);
-	for (int i = 0; i < 6; i++) {
-		if (readArray(kSlotObjects, 0, i) != obj)
+	splitScrollTo(obj, index);
+	for (int k = 0; k < inv->numSlots; k++) {
+		if (splitSlotObject(k) != obj)
 			continue;
-		const int slot = getVerbSlot(200 + i, 0);
+		const int slot = getVerbSlot(inv->firstVerb + k, 0);
 		if (slot && _verbs[slot].curmode == 1)
-			runInputScript(kVerbClickArea, 200 + i, right ? 2 : 1);
+			runInputScript(kVerbClickArea, inv->firstVerb + k, right ? 2 : 1);
 		return;
 	}
 }
 
-void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, int what) {
+void ScummEngine::handleLowerScreenTouch(Common::Point p, int what) {
 	// What happened: 0 left press, 1 right press, 2 left release, 3 right release
+	if (what == 0 || what == 1)
+		tapSplitScreenItem(p.x / kSplitItemPitch - 1, what == 1);
+}
+
+void ScummEngine_v6::handleLowerScreenTouch(Common::Point p, int what) {
 	if (_game.id == GID_TENTACLE) {
-		if (what == 0 || what == 1)
-			tapSplitScreenItem(p.x / kSplitItemPitch - 1, what == 1);
+		ScummEngine::handleLowerScreenTouch(p, what);
 		return;
 	}
 
@@ -955,6 +1055,8 @@ void ScummEngine::updateSplitScreenElements() {
 	Common::Array<OSystem::SplitScreenElement> elements;
 	OSystem::SplitScreenElement e;
 	Common::Rect verbTexts;
+	// Fate of Atlantis: all the items in place of the inventory box
+	const bool boxItems = _game.id == GID_INDY4 && addSplitScreenItems(elements);
 
 	// A conversation replaces the verbs by lines of text, which are wider than the verb box
 	bool dialog = false;
@@ -1008,9 +1110,11 @@ void ScummEngine::updateSplitScreenElements() {
 					verbTexts.extend(e.src);
 			} else {
 				// The verb box and the inventory box (at its right) are shown whole
-				if (v.curRect.left >= 128)
+				if (v.curRect.left >= 128) {
+					if (boxItems)
+						continue;
 					e.group = 5;
-				else
+				} else
 					e.group = (v.type == kImageVerbType) ? 4 : 6; // 6: verb texts
 			}
 			elements.push_back(e);
@@ -1025,16 +1129,16 @@ void ScummEngine::updateSplitScreenElements() {
 		e.group = 4;
 		e.src = Common::Rect(_game.id == GID_TENTACLE ? verbTexts.left : 0, top, 144, bottom);
 		elements.push_back(e);
-		if (_game.id == GID_TENTACLE) {
-			// All the items, not only the six the game shows, drawn into the lower screen image
-			addSplitScreenItems(elements);
-		} else {
+		// All the items, not only the ones the game shows, drawn into the lower screen image;
+		// else the inventory box
+		const bool items = addSplitScreenItems(elements);
+		if (!items) {
 			e.group = 5;
 			e.src = Common::Rect(144, top, _screenWidth, bottom);
 			elements.push_back(e);
 		}
 
-		if (_game.id == GID_MONKEY2) {
+		if (_game.id == GID_MONKEY2 && !items) {
 			// The inventory is a grid of slots, 40 by 24 pixels, at the right of two scroll arrow cells
 			// (always reported, as the arrows come and go); the box is stretched to the full width
 			e.group = 7;
